@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  # 给这个服务起个名字，叫 db (代表 database)
+  db:
+    # 告诉 Docker 去云端下载 PostgreSQL 第 15 版
+    image: postgres:15
+
+    # 容器的名字，方便你在 Docker Desktop 列表里找到它
+    container_name: recipe-postgres-db
+
+    # 只要 Docker 启动，这个数据库就自动重启（防止你不小心关掉）
+    restart: always
+
+    ports:
+      - "5432:5432"
+
+    # 设置数据库的账号密码
+    environment:
+      POSTGRES_USER: root # 用户名
+      POSTGRES_PASSWORD: 1234 # 密码
+      POSTGRES_DB: recipedb # 数据库名
+
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
