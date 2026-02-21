@@ -14,6 +14,9 @@ Recipe-BackEnd/.mvn/
 Recipe-BackEnd/mvnw
 Recipe-BackEnd/mvnw.cmd
 
+uploads/
+Dokumentum/
+
 # --- 前端 (Vue / Node) ---
 Recipe-FrontEnd/node_modules/
 Recipe-FrontEnd/dist/
