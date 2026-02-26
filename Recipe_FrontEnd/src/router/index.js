@@ -5,6 +5,8 @@ import HomeView from '../views/home/index.vue'
 import RecipesView from '../views/recipes/index.vue'
 import ProfileView from '../views/profile/index.vue'
 import RecommendView from '../views/recommend/index.vue'
+import RecipeDetailView from '../views/recipes/recipe.vue'
+import RecipeCreateView from '../views/recipes/RecipeCreate.vue'
 
 const routes = [
   {
@@ -27,6 +29,18 @@ const routes = [
       {
         path: 'profile',
         component: ProfileView,
+      },
+
+      {
+        path: '/recipe/:id',
+        name: 'RecipeDetail',
+        component: RecipeDetailView,
+        props: true,
+      },
+      {
+        path: '/recipe/create',
+        name: RecipeCreateView,
+        component: RecipeCreateView,
       },
     ],
   },

@@ -1,5 +1,6 @@
 package org.zhan.recipe_backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,7 +44,7 @@ public class Recipe {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private DiffEnum diff; // EASY, MEDIUM, HARD
+    private DiffEnum difficulty; // EASY, MEDIUM, HARD
 
     @Column(name = "cooking_time_min", nullable = false)
     private Integer cookingTimeMin;
@@ -54,8 +55,8 @@ public class Recipe {
     private List<String> flavours;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "courses", columnDefinition = "varchar[]")
-    private List<CourseEnum> courses;
+    @Column(name = "courses", columnDefinition = "varchar[]") // 如果是 Postgres 用 jsonb，MySQL 用 json
+    private List<String> courses;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "cuisines", columnDefinition = "varchar[]")
@@ -73,7 +74,7 @@ public class Recipe {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "steps", columnDefinition = "jsonb")
-    private List<RecipeStep> steps; // 复杂的步骤列表
+    private List<RecipeStep> steps;
 
 
     @Column(name = "likes_count")
