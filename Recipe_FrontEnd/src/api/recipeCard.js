@@ -1,7 +1,7 @@
-import request from '../utils/reques'
+import request from '../utils/request'
 
 export const getRecipeCardApi = (recipes, page, size) => {
-  return request.get(`/recipes?page=${page}&pageSize=${size}`, recipes)
+  return request.post(`/recipes?page=${page}&pageSize=${size}`, recipes)
 }
 export const getAllCuisinesApi = () => {
   return request.get(`/recipes/cuisines`)

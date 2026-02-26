@@ -1,15 +1,6 @@
 <script setup>
 import { defineProps } from 'vue'
-
-const props = defineProps({
-  data: {
-    type: Object,
-    required: true,
-  },
-})
-
-// 注意：原本代码里的 const cards = ref(...) 是没用的，
-// 因为我们直接用了 props.data，所以我把它删了保持代码干净
+import { useRouter } from 'vue-router'
 
 const convertDifficultyToStars = (diff) => {
   if (diff === 'EASY') return 1
@@ -17,7 +8,18 @@ const convertDifficultyToStars = (diff) => {
   else return 3
 }
 
-const goToDetail = () => {}
+// Jump to the recipe s details
+const props = defineProps({
+  data: {
+    type: Object,
+    required: true,
+  },
+})
+const router = useRouter()
+const goToDetail = () => {
+  // 跳转到详情页，并把卡片的 id 传过去
+  router.push(`/recipe/${props.data.id}`)
+}
 </script>
 
 <template>

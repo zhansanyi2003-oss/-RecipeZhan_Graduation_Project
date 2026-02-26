@@ -4,6 +4,8 @@ import RecipeCard from '../../component/recipeCard.vue'
 import { getRecipeCardApi } from '../../api/recipeCard'
 import { getAllCuisinesApi } from '../../api/recipeCard'
 import { getAllFlavoursApi } from '../../api/recipeCard'
+
+import { useRouter } from 'vue-router'
 // 引入图标
 import {
   ArrowRight,
@@ -38,7 +40,7 @@ const addIngredientTag = () => {
   ingredientInputValue.value = '' // 清空输入框
 }
 const removeIngredientTag = (tag) => {
-  searchRecipe.value.ingredients = searchRecipe.value.ingredients.filter((t) => t !== tag)
+  searchRecipe.value.ingredientTags = searchRecipe.value.ingredientTags.filter((t) => t !== tag)
 }
 
 // 4. 4宫格下拉框配置 (必须用 ref 包裹，因为有动态数据)
@@ -97,21 +99,44 @@ const handleReset = () => {
 }
 
 // 6. 点击搜索按钮
+const hasNext = ref(false)
 const handleSearch = () => {
-  getRecipeCardApi()
+  currentPage.value = 1
+  fetchRecipes(true)
+}
+
+const fetchRecipes = async (isNewSearch) => {
+  try {
+    const result = await getRecipeCardApi(searchRecipe.value, currentPage.value, pageSize.value)
+
+    if (result.code === 1) {
+      const newData = result.data.content
+
+      // 判断是覆盖还是追加
+      if (isNewSearch) {
+        recipeCards.value = newData
+      } else {
+        recipeCards.value.push(...newData) // ✨ 展开语法，把新卡片追加到老卡片后面
+      }
+
+      // ✨ 核心魔法：Spring Boot 返回的 Slice 里面有一个 last 属性。
+      // 如果 last 为 true，说明是最后一页了。所以 hasNext 就是 !last。
+      hasNext.value = !result.data.last
+    }
+  } catch (error) {
+    console.error('请求炸了：', error)
+  }
+}
+
+const loadMoreRecipes = () => {
+  currentPage.value++ // 页码 +1
+  fetchRecipes(false)
 }
 
 // 7. 排序和分页逻辑
 const sortBy = ref('default')
 const currentPage = ref(1)
 const pageSize = ref(12)
-const total = ref(0)
-
-const handlePageChange = (val) => {
-  currentPage.value = val
-  getRecipeCards()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
 const flavours = ref([])
 const cuisines = ref([])
 
@@ -132,21 +157,11 @@ const getCuisines = async () => {
   }
 }
 
-const getRecipeCards = async () => {
-  const result = await getRecipeCardApi(searchRecipe.value, currentPage.value, pageSize.value)
-  if (result.code) {
-    recipeCards.value = result.data.content
-
-    total.value = result.data.totalElements
-  }
-}
-
 // 8. 页面加载：拉取动态选项 & 初始化列表
 onMounted(() => {
-  getRecipeCards()
+  fetchRecipes(true)
   getFlavours()
   getCuisines()
-  // 模拟请求后端获取动态的 "口味" 和 "菜系" 数据
 })
 </script>
 
@@ -162,7 +177,7 @@ onMounted(() => {
         </div>
         <div class="keyword-search-box">
           <el-input
-            v-model="searchRecipe.name"
+            v-model="searchRecipe.title"
             placeholder="Input the dish's name..."
             size="large"
             clearable
@@ -190,9 +205,8 @@ onMounted(() => {
           >
             {{ tag }}
           </el-tag>
-
           <el-input
-            v-model="searchRecipe.ingredientTags"
+            v-model="ingredientInputValue"
             class="tag-input"
             size="small"
             placeholder="+ Add (Press Enter)"
@@ -268,16 +282,21 @@ onMounted(() => {
         </el-col>
       </el-row>
     </div>
+    <div class="load-more-container">
+      <el-button
+        v-if="hasNext"
+        type="primary"
+        size="large"
+        round
+        @click="loadMoreRecipes"
+        class="load-more-btn"
+      >
+        Load More Recipes ...
+      </el-button>
 
-    <div class="pagination-container">
-      <el-pagination
-        background
-        layout="prev, pager, next"
-        :total="total"
-        v-model:page-size="pageSize"
-        v-model:current-page="currentPage"
-        @current-change="handlePageChange"
-      />
+      <el-divider v-else-if="recipeCards.length > 0" class="no-more-tips">
+        Oops, you have reached the end! 🍳
+      </el-divider>
     </div>
   </div>
 </template>
@@ -517,10 +536,25 @@ onMounted(() => {
 }
 
 /* 分页 */
-.pagination-container {
+.load-more-container {
   display: flex;
   justify-content: center;
   margin-top: 40px;
-  padding-bottom: 40px;
+  padding-bottom: 50px;
+}
+.load-more-btn {
+  width: 200px;
+  font-weight: bold;
+  background-color: #ff7043; /* 你可以换成你的主题色 */
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+.load-more-btn:hover {
+  transform: scale(1.05);
+}
+.no-more-tips {
+  color: #999;
+  font-size: 14px;
 }
 </style>

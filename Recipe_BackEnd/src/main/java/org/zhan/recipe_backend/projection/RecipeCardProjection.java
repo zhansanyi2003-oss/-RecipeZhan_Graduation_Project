@@ -9,7 +9,7 @@ public interface RecipeCardProjection {
     String getTitle();
     String getCoverImage();
     DiffEnum getDiff();
-    Integer getCookingTimeMin();
+    String getCookingTimeMin();
     List<String> getCuisines();
     List<String> getFlavours();
     List<String> getIngredientTags();
