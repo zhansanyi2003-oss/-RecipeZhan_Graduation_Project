@@ -1,10 +1,9 @@
 package org.zhan.recipe_backend.dto;
 
+
 import lombok.Data;
 
 @Data
 public class UserDto {
-    private String id;
-    private String username;
-    private String avatar;
+
 }

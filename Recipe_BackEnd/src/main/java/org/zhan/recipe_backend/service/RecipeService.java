@@ -1,7 +1,6 @@
 package org.zhan.recipe_backend.service;
 
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
-import org.zhan.recipe_backend.dto.UserDto;
 
 public interface RecipeService {
 
