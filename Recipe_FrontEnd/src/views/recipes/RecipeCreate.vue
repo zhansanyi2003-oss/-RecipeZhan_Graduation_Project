@@ -38,7 +38,7 @@ const form = ref({
 })
 
 // 📏 校验规则 (针对普通字段)
-const rules = reactive({
+const rules = ref({
   title: [
     { required: true, message: 'Please type the title', trigger: 'blur' },
     { min: 3, max: 40, message: 'Length must be 3 - 40 characters', trigger: 'blur' },
@@ -63,9 +63,7 @@ const rules = reactive({
   ],
 })
 
-// === 📸 图片上传逻辑 ===
-// 🚨 注意：请确认你的后端端口是 8080 还是 8888，下面 action 要对应修改
-const uploadActionUrl = 'http://localhost:8080/api/upload'
+const uploadActionUrl = 'http://localhost:8888/api/upload'
 
 const handleCoverSuccess = (response) => {
   if (response.code === 1) {

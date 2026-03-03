@@ -109,7 +109,7 @@ const fetchRecipes = async (isNewSearch) => {
   try {
     const result = await getRecipeCardApi(searchRecipe.value, currentPage.value, pageSize.value)
 
-    if (result.code === 1) {
+    if (result.code) {
       const newData = result.data.content
 
       // 判断是覆盖还是追加
@@ -191,7 +191,9 @@ onMounted(() => {
 
         <div class="ingredient-tags-area">
           <span class="tags-label">
-            <el-button type="danger" :icon="Search">Ingredients:</el-button></span
+            <el-button color="#4ea685" style="color: white" :icon="Search"
+              >Ingredients:</el-button
+            ></span
           >
 
           <el-tag
@@ -199,7 +201,7 @@ onMounted(() => {
             :key="tag"
             closable
             effect="dark"
-            color="#ff7043"
+            color="#4ea685"
             class="ingredient-tag"
             @close="removeIngredientTag(tag)"
           >
@@ -253,7 +255,6 @@ onMounted(() => {
         </div>
       </div>
     </div>
-    {{ searchRecipe }}
     <div class="recipes-section">
       <div class="list-header">
         <div class="left-spacer"></div>
@@ -313,7 +314,7 @@ onMounted(() => {
 
 /* 搜索面板 */
 .search-panel {
-  background-color: #5d007d; /* 你的主题紫 */
+  background-image: linear-gradient(135deg, #4ea685 0%, #57b894 100%);
   padding: 30px 40px;
   color: white;
 }
@@ -436,7 +437,7 @@ onMounted(() => {
 
 .card-top {
   background-color: white;
-  color: #e64a19;
+  color: #4ea685;
   padding: 15px 0;
   display: flex;
   flex-direction: column;
@@ -452,7 +453,7 @@ onMounted(() => {
 }
 
 .card-bottom {
-  background-color: #ffe0b2;
+  background-color: #eef7f4;
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
 }
@@ -465,8 +466,8 @@ onMounted(() => {
 }
 :deep(.custom-select .el-input__inner) {
   text-align: center;
-  color: #5d4037;
-  font-weight: 500;
+  color: #2a5948;
+  font-weight: bold;
 }
 
 /* 搜索大按钮 */
@@ -476,7 +477,7 @@ onMounted(() => {
 }
 .search-btn {
   background-color: white;
-  color: #d32f2f;
+  color: #4ea685;
   border: none;
   border-radius: 50px;
   padding: 12px 60px;
@@ -493,7 +494,7 @@ onMounted(() => {
   transform: scale(1.05);
 }
 .btn-icon {
-  background-color: #d32f2f;
+  background-color: #4ea685;
   color: white;
   border-radius: 50%;
   padding: 4px;
@@ -545,12 +546,13 @@ onMounted(() => {
 .load-more-btn {
   width: 200px;
   font-weight: bold;
-  background-color: #ff7043; /* 你可以换成你的主题色 */
+  background-color: #4ea685 !important;
   border: none;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
 }
 .load-more-btn:hover {
+  background-color: #57b894 !important; /* 悬浮时变成略浅一点的绿 */
   transform: scale(1.05);
 }
 .no-more-tips {

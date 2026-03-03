@@ -8,7 +8,6 @@ const convertDifficultyToStars = (diff) => {
   else return 3
 }
 
-// Jump to the recipe s details
 const props = defineProps({
   data: {
     type: Object,
@@ -39,6 +38,10 @@ const goToDetail = () => {
           :colors="{ 1: '#2E8B57', 2: '#D4AF37', 3: '#F56C6C' }"
         />
         <span class="difficulty-text">{{ data.difficulty }}</span>
+      </div>
+      <div class="rating">
+        <el-rate :model-value="data.rating" disabled show-score text-color="#ff9900" />
+        <span class="difficulty-text">{{ data.rating }}</span>
       </div>
     </div>
     <div class="card-footer">
@@ -107,7 +110,7 @@ const goToDetail = () => {
 }
 
 .card-footer {
-  background-color: #5d198f;
+  background-image: linear-gradient(-45deg, #4ea685 0%, #57b894 100%);
   color: white;
   padding: 10px 15px;
   display: flex;

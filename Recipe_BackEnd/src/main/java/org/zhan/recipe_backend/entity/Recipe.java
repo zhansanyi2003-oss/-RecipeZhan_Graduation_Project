@@ -66,8 +66,6 @@ public class Recipe {
     @Column(name = "ingredient_tags", columnDefinition = "varchar[]")
     private List<String> ingredientTags; // 专门用于"清冰箱"搜索的纯文本标签
 
-
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "ingredients_list", columnDefinition = "jsonb")
     private List<IngredientDetail> ingredientsList; // 复杂的食材明细
@@ -80,8 +78,12 @@ public class Recipe {
     @Column(name = "likes_count")
     private Integer likesCount;
 
-    @Column(name = "collections_count")
-    private Integer collectionsCount;
+    @Column(name = "average_rating")
+    private Double averageRating;
+
+    // 缓存的总评分人数 (默认 0)
+    @Column(name = "rating_count")
+    private Integer ratingCount;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
