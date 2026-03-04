@@ -21,6 +21,7 @@ public class RecipeCardDto {
     private Integer likesCount;
     private Double averageRating ;
     private Integer ratingCount;
+    private  Boolean isLiked;
 
 
 

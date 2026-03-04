@@ -1,7 +1,6 @@
 package org.zhan.recipe_backend.controller;
 
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +8,6 @@ import org.zhan.recipe_backend.common.Result;
 import org.zhan.recipe_backend.dto.RatingRequestDTO;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
-import org.zhan.recipe_backend.service.RatingService;
 import org.zhan.recipe_backend.service.RecipeCardService;
 import org.zhan.recipe_backend.service.RecipeService;
 import org.zhan.recipe_backend.service.impl.RatingServiceImpl;
@@ -22,7 +20,7 @@ import java.util.Map;
 
 
 
-public class recipeController {
+public class RecipeController {
 
     @Autowired
     private RecipeCardService recipeCardService;

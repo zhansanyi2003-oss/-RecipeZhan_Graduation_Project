@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
 import org.zhan.recipe_backend.dto.UserDto;
 import org.zhan.recipe_backend.entity.Recipe;
@@ -60,4 +61,35 @@ public class RecipeServiceImpl implements RecipeService {
         recipe.setLikesCount(0);
         recipeRepository.save(recipe);
     }
+    public static RecipeCardDto convertToCardDto(Recipe recipe) {
+        if (recipe == null) {
+            return null;
+        }
+
+        RecipeCardDto dto = new RecipeCardDto();
+        dto.setId(recipe.getId());
+        dto.setTitle(recipe.getTitle());
+        dto.setCoverImage(recipe.getCoverImage());
+        dto.setDifficulty(recipe.getDifficulty());
+
+        // 注意这里：Entity 里面是 Integer，DTO 里面是 String，需要转一下
+        if (recipe.getCookingTimeMin() != null) {
+            dto.setCookingTimeMin(String.valueOf(recipe.getCookingTimeMin()));
+        }
+
+        dto.setFlavours(recipe.getFlavours());
+        dto.setCuisines(recipe.getCuisines());
+        dto.setIngredientTags(recipe.getIngredientTags());
+        dto.setCourses(recipe.getCourses());
+
+        // 处理可能为 null 的统计数据，给前端返回 0 作为默认值，防止前端报错
+        dto.setLikesCount(recipe.getLikesCount() != null ? recipe.getLikesCount() : 0);
+        dto.setAverageRating(recipe.getAverageRating() != null ? recipe.getAverageRating() : 0.0);
+        dto.setRatingCount(recipe.getRatingCount() != null ? recipe.getRatingCount() : 0);
+
+        return dto;
+    }
+
+
+
 }
