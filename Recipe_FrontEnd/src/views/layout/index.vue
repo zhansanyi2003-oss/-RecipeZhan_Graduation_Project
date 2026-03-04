@@ -6,7 +6,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { UserFilled, SwitchButton, EditPen } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const route = useRoute() // 🌟 获取当前路由信息
+const route = useRoute() 
 
 const userInfo = ref({ name: 'Visitor', isLoggedIn: false })
 
@@ -105,7 +105,7 @@ watch(
 
                 <template #dropdown>
                   <el-dropdown-menu class="custom-dropdown">
-                    <el-dropdown-item>
+                    <el-dropdown-item @click="router.push('/profile')">
                       <el-icon><User /></el-icon> My Profile
                     </el-dropdown-item>
                     <el-dropdown-item>

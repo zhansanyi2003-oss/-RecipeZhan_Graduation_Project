@@ -55,6 +55,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     @Query(value="SELECT DISTINCT unnest(cuisines) FROM recipes WHERE cuisines IS NOT NULL", nativeQuery = true )
     List<String> findAllDistinctCuisines();
 
+    List<Recipe> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
 
 
 }
