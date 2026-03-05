@@ -9,7 +9,7 @@ import org.zhan.recipe_backend.entity.Recipe;
 import java.util.List;
 
 public interface RecipeCardService {
-    public Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int size) ;
+     Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int size) ;
 
     List<String> getFlavours();
 

@@ -7,9 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
-import org.zhan.recipe_backend.entity.Recipe;
-import org.zhan.recipe_backend.entity.User;
-import org.zhan.recipe_backend.entity.UserSavedRecipes;
+import org.zhan.recipe_backend.entity.*;
+import org.zhan.recipe_backend.repository.CuisineRepository;
+import org.zhan.recipe_backend.repository.FlavourRepository;
 import org.zhan.recipe_backend.repository.RecipeRepository;
 import org.zhan.recipe_backend.repository.UserSavedRepository;
 import org.zhan.recipe_backend.service.RecipeCardService;
@@ -17,6 +17,7 @@ import org.zhan.recipe_backend.utils.AuthUtils;
 import org.zhan.recipe_backend.utils.ConvertUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -24,6 +25,10 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
     @Autowired
     private RecipeRepository recipeRepository;
+    @Autowired
+    private FlavourRepository flavourRepository;
+    @Autowired
+    private CuisineRepository cuisineRepository;
 
     @Autowired
     private UserSavedRepository userSavedRepository;
@@ -53,15 +58,20 @@ public class RecipeCardServiceImpl implements RecipeCardService {
     }
 
 
-
-
     @Override
     public List<String> getFlavours() {
-        return recipeRepository.findAllDistinctFlavours();
+        List<Flavour> flavours = flavourRepository.findAll();
+        return flavours.stream()
+                .map(Flavour::getName)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<String> getCuisines() {
-        return  recipeRepository.findAllDistinctCuisines();
+        List<Cuisine> cuisines = cuisineRepository.findAll();
+        return cuisines.stream()
+                .map(Cuisine::getName) // 只提取名字
+                .collect(Collectors.toList());
     }
+
 }

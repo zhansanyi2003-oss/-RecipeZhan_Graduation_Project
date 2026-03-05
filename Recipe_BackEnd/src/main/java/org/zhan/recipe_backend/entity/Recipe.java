@@ -2,10 +2,7 @@ package org.zhan.recipe_backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -14,6 +11,7 @@ import org.zhan.recipe_backend.common.CourseEnum;
 import org.zhan.recipe_backend.common.DiffEnum;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -49,35 +47,30 @@ public class Recipe {
     @Column(name = "cooking_time_min", nullable = false)
     private Integer cookingTimeMin;
 
-
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "flavours", columnDefinition = "varchar[]")
-    private List<String> flavours;
-
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "courses", columnDefinition = "varchar[]") // 如果是 Postgres 用 jsonb，MySQL 用 json
-    private List<String> courses;
-
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "cuisines", columnDefinition = "varchar[]")
-    private List<String> cuisines;
-
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "ingredient_tags", columnDefinition = "varchar[]")
-    private List<String> ingredientTags; // 专门用于"清冰箱"搜索的纯文本标签
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ingredients_list", columnDefinition = "jsonb")
-    private List<IngredientDetail> ingredientsList; // 复杂的食材明细
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "steps", columnDefinition = "jsonb")
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("stepNumber ASC")
     private List<RecipeStep> steps;
 
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Recipe_Ingredient> ingredientsList;
 
-    @Column(name = "likes_count")
-    private Integer likesCount;
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Recipe_Course> recipeCourses = new ArrayList<>();
 
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Recipe_Cuisine> recipeCuisines = new ArrayList<>();
+
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Recipe_Flavour> recipeFlavours = new ArrayList<>();
     @Column(name = "average_rating")
     private Double averageRating;
 

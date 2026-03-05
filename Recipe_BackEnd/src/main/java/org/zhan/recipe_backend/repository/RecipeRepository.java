@@ -49,11 +49,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
             @Param("maxTime") Integer maxTime,
             Pageable pageable
     );
-    @Query(value="SELECT DISTINCT unnest(flavours) FROM recipes WHERE flavours IS NOT NULL", nativeQuery = true )
-    List<String> findAllDistinctFlavours();
-
-    @Query(value="SELECT DISTINCT unnest(cuisines) FROM recipes WHERE cuisines IS NOT NULL", nativeQuery = true )
-    List<String> findAllDistinctCuisines();
 
     List<Recipe> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
 
