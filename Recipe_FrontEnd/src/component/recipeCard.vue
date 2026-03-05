@@ -67,8 +67,6 @@ const getDifficultyType = (diff) => {
 
     <div class="card-body">
       <h3 class="title" :title="data.title">{{ data.title }}</h3>
-      {{ isLiked }}
-
       <div class="meta-row">
         <div class="meta-item">
           <el-icon><Timer /></el-icon>
