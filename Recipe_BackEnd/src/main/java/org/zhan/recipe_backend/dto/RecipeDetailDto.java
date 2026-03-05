@@ -3,7 +3,7 @@ package org.zhan.recipe_backend.dto;
 import lombok.Data;
 import org.zhan.recipe_backend.common.CourseEnum;
 import org.zhan.recipe_backend.common.DiffEnum;
-import org.zhan.recipe_backend.entity.IngredientDetail;
+import org.zhan.recipe_backend.entity.Ingredient;
 import org.zhan.recipe_backend.entity.RecipeStep;
 
 import java.util.List;
@@ -24,6 +24,6 @@ public class RecipeDetailDto {
     private Integer ratingCount;
     private  Integer likesCount;
     private Double userScore;
-    private List<IngredientDetail> ingredientsList;
-    private List<RecipeStep> steps;
+    private List<IngredientDto> ingredientsList;
+    private List<RecipeStepDto> steps;
 }
