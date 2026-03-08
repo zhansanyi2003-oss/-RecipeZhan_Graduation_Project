@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.RecipeRating;
 import org.zhan.recipe_backend.repository.RatingRepository;
+import org.zhan.recipe_backend.repository.RecipeEsRepository;
 import org.zhan.recipe_backend.repository.RecipeRepository;
 
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class RatingServiceImpl {
     private RatingRepository ratingRepository;
     @Autowired
     private RecipeRepository recipeRepository;
+
 
     @Transactional // 🌟 必须加事务，保证两张表同时成功或同时失败
     public  Map<String, Object> submitRating(Long recipeId, Long userId, Double score) {

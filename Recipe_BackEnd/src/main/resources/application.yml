@@ -4,10 +4,19 @@ server:
 spring:
   application:
     name: Recipe_BackEnd
+  elasticsearch:
+    # ES 服务的地址。因为我们是用 Docker 跑在本地，并且映射了 9200 端口
+    uris: http://localhost:9200
+
+    # 连接超时时间（如果在 5 秒内连不上 ES，就立刻报错，不要让线程死等）
+    connection-timeout: 5s
+    # 读取超时时间
+    socket-timeout: 30s
+
 
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/recipedb
+    url: jdbc:postgresql://localhost:5432/recipedb
     username: root
     password: "1234"
     driver-class-name: org.postgresql.Driver

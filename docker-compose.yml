@@ -22,4 +22,40 @@ services:
       POSTGRES_DB: recipedb # 数据库名
 
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data # 改成命名卷
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: recipe_es
+    environment:
+      - discovery.type=single-node # 告诉 ES 我们是单机开发模式，不搞集群选举
+      - xpack.security.enabled=false # 🚨 救命配置：关闭本地密码和 HTTPS 验证！否则 Spring Boot 连起来极其痛苦！
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 🚨 防崩溃配置：限制 ES 最多吃 512M 内存，否则它会榨干你的电脑 RAM
+    ports:
+      - "9200:9200" # 暴露给 Spring Boot 调用的 REST 接口端口
+    volumes:
+      - es_data:/usr/share/elasticsearch/data # 挂载数据卷，防止重启 Docker 后倒排索引丢失
+    networks:
+      - recipe_network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    container_name: recipe_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 # 告诉 Kibana 从哪里读取 ES 的数据
+    ports:
+      - "5601:5601" # 暴露给你用浏览器访问的端口
+    depends_on:
+      - elasticsearch # 必须等 ES 启动后，Kibana 再启动
+    networks:
+      - recipe_network
+
+networks:
+  recipe_network:
+    driver: bridge
+
+volumes:
+  es_data:
+    driver: local
+  pg_data:
+    driver: local

@@ -70,11 +70,11 @@ const filterConfig = ref([
     icon: 'KnifeFork',
     multiple: true, // 👈 可多选
     options: [
-      { label: 'Breakfast', value: 'Breakfast' },
-      { label: 'Lunch', value: 'Lunch' },
-      { label: 'Dinner', value: 'Dinner' },
-      { label: 'Dessert', value: 'Dessert' },
-      { label: 'Snack', value: 'Snack' },
+      { label: 'Breakfast', value: 'BREAKFAST' },
+      { label: 'Lunch', value: 'LUNCH' },
+      { label: 'Dinner', value: 'DINNER' },
+      { label: 'Dessert', value: 'DESSERT' },
+      { label: 'Snack', value: 'SNACK' },
     ],
   },
   {
