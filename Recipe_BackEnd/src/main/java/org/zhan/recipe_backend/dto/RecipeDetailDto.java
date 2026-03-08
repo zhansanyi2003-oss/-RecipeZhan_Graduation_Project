@@ -22,8 +22,8 @@ public class RecipeDetailDto {
     private List<String> cuisines;
     private Double averageRating ;
     private Integer ratingCount;
-    private  Integer likesCount;
     private Double userScore;
+    private Boolean isLiked;
     private List<IngredientDto> ingredientsList;
     private List<RecipeStepDto> steps;
 }

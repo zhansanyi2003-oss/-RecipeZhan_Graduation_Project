@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 @Component
 public  class ConvertUtils {
 
-    @Autowired
-    private  UserSavedRepository userSavedRepository;
     public static RecipeCardDto convertToCardDto(Recipe recipe) {
 
 

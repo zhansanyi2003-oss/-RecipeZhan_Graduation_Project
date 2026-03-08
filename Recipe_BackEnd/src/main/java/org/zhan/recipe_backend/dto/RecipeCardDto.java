@@ -18,7 +18,6 @@ public class RecipeCardDto {
     private List<String> cuisines;
     private List<String> ingredientTags;
     private List<String> courses;
-    private Integer likesCount;
     private Double averageRating ;
     private Integer ratingCount;
     private  Boolean isLiked;
