@@ -62,8 +62,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth) {
     // 2. 去包里（localStorage）翻一下有没有 Token
     const token = localStorage.getItem('loginUser') // 注意：这里换成你实际存 Token 的 key
-
-    if (token) {
+    const exp = localStorage.getItem('token_exp')
+    if (token && exp && Date.now() < exp) {
       // ✅ 有 Token，说明登录过了，放行！打开页面！
       next()
     } else {

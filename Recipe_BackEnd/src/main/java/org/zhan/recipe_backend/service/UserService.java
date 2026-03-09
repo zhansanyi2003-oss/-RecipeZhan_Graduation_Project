@@ -2,6 +2,7 @@ package org.zhan.recipe_backend.service;
 
 import org.springframework.data.domain.Slice;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
+import org.zhan.recipe_backend.dto.UserDto;
 import org.zhan.recipe_backend.dto.UserLoginDto;
 import org.zhan.recipe_backend.dto.UserSingUpDto;
 import org.zhan.recipe_backend.entity.User;
@@ -21,4 +22,10 @@ public interface UserService {
      Boolean toggleSaveRecipe(Long recipeId, Boolean status);
 
      Slice<RecipeCardDto> getSavedRecipe(Integer page,Integer pageSize);
+
+     UserDto getUserById();
+
+     void updateAvatar(String newAvatarUrl);
+
+     void deleteAvatar();
 }

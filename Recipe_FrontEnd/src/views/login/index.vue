@@ -147,10 +147,11 @@ const handleLogin = async () => {
       // 你的拦截器里写的是：JSON.parse(localStorage.getItem('loginUser'))
       const token = result.data // 假设后端把 token 放在了 result.data 里
       const loginUserObj = {
-        token: token,
+        Authorization: token,
         username: loginForm.value.username,
       }
       localStorage.setItem('loginUser', JSON.stringify(loginUserObj))
+      localStorage.setItem('token_exp', Date.now() + 24 * 60 * 60 * 1000)
 
       // 4. 🌟 返回上一页的高级写法：
       // 如果是被拦截器踢到登录页的，URL上通常会有 ?redirect=/xxx，我们就跳回 /xxx

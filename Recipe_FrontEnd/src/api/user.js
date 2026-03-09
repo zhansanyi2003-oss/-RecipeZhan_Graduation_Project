@@ -11,3 +11,11 @@ export const getSavedRecipeApi = (page, size) => {
 export const sumbmitSaveRecipeApi = (id, status) => {
   return request.post(`/users/save/${id}`, { status: status })
 }
+
+export const getUserInfoApi = () => {
+  return request.get(`/users`)
+}
+
+export const deleteAvatarApi = () => {
+  return request.delete(`/users/avatar`)
+}

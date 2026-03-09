@@ -29,6 +29,7 @@ public class RecipeController {
     private RecipeService recipeService;
     @Autowired
     private RatingServiceImpl ratingService;
+    Map<String, Object> newStats;
 
     @PostMapping("")
     public Result getRecipe(@RequestBody RecipeCardDto dto, @RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "12") Integer pageSize) {
@@ -55,10 +56,20 @@ public class RecipeController {
 
     }
 
+    @DeleteMapping("/rate")
+    public Result deleteRecipe(@RequestParam("id") Long id) {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        newStats=ratingService.deleteRating(id,userId);
+        return  Result.Success(newStats
+
+
+        );
+    }
+
     @PostMapping("/create")
     public Result addRecipe(@RequestBody RecipeDetailDto dto)
     {
-        recipeService.addRecipe(dto,1l);
+        recipeService.addRecipe(dto);
         return  Result.Success();
     }
     @PostMapping("/rate")
@@ -68,7 +79,7 @@ public class RecipeController {
 
         try {
             // 调用 Service，拿到最新的平均分和人数
-            Map<String, Object> newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
+          newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
             return Result.Success(newStats);
         } catch (Exception e) {
             return Result.Error("Failed to submit rating");

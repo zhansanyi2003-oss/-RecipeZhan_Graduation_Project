@@ -21,36 +21,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     // 🏆 最核心的方法：按创建时间倒序查询所有的食谱，并且返回轻量级的投影
     // Pageable 是用来做分页的参数
-    @Query(value = """
-        SELECT * FROM recipes r WHERE 
-        
-        (CAST(:#{#cardParam.title} AS text) IS NULL OR\s
-                     -- 1. 传统模糊匹配 (查局部的词)
-                     r.title ILIKE CONCAT('%', CAST(:#{#cardParam.title} AS text), '%') OR\s
-                     -- 2. FTS 全文检索 (查语法变形、语序颠倒、单复数，比如 fried chicken)
-                     to_tsvector('english', r.title) @@ websearch_to_tsquery('english', CAST(:#{#cardParam.title} AS text)) OR
-                     -- 3. Trigram 错别字容错 (查拼写错误，比如 chiken)
-                     word_similarity(CAST(:#{#cardParam.title} AS text), r.title) > 0.3) AND
-
-        
-        (CAST(:maxTime AS int) IS NULL OR r.cooking_time_min <= CAST(:maxTime AS int)) AND 
-        (CAST(:minTime AS int) IS NULL OR r.cooking_time_min > CAST(:minTime AS int)) AND 
-        
-        (CAST(:#{#cardParam.flavoursStr} AS text) IS NULL OR r.flavours && CAST(string_to_array(CAST(:#{#cardParam.flavoursStr} AS text), ',') AS varchar[])) AND 
-        (CAST(:#{#cardParam.cuisinesStr} AS text) IS NULL OR r.cuisines && CAST(string_to_array(CAST(:#{#cardParam.cuisinesStr} AS text), ',') AS varchar[])) AND 
-        (CAST(:#{#cardParam.coursesStr} AS text) IS NULL OR r.courses && CAST(string_to_array(CAST(:#{#cardParam.coursesStr} AS text), ',') AS varchar[])) AND 
-        
-        (CAST(:#{#cardParam.ingredientsStr} AS text) IS NULL OR r.ingredient_tags @> CAST(string_to_array(CAST(:#{#cardParam.ingredientsStr} AS text), ',') AS varchar[]))
-        """,
-            nativeQuery = true)
-    Slice<Recipe> searchRecipesByParams(
-            @Param("cardParam") RecipeCardDto cardParam,
-            @Param("minTime") Integer minTime,
-            @Param("maxTime") Integer maxTime,
-            Pageable pageable
-    );
 
     List<Recipe> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
+    int countByAuthorId(Long authorId);
 
 
 
