@@ -6,5 +6,5 @@ public interface RecipeService {
 
     public RecipeDetailDto getRecipes(Long id);
 
-    void addRecipe(RecipeDetailDto dto, Long userId);
+    void addRecipe(RecipeDetailDto dto);
 }

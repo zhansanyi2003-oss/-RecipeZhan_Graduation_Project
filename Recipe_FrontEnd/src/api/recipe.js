@@ -11,3 +11,7 @@ export const createRecipeApi = (recipe) => {
 export const submitRatingApi = (data) => {
   return request.post('/recipes/rate', data)
 }
+
+export const deleteRatingApi = (id) => {
+  return request.delete(`/recipes/rate?id=${id}`)
+}

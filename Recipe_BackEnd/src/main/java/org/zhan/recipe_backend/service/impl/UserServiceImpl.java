@@ -14,11 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.common.RoleEnum;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
+import org.zhan.recipe_backend.dto.UserDto;
 import org.zhan.recipe_backend.dto.UserLoginDto;
 import org.zhan.recipe_backend.dto.UserSingUpDto;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.User;
 import org.zhan.recipe_backend.entity.UserSavedRecipes;
+import org.zhan.recipe_backend.mapper.UserMapper;
 import org.zhan.recipe_backend.repository.RecipeRepository;
 import org.zhan.recipe_backend.repository.UserRepository;
 import org.zhan.recipe_backend.repository.UserSavedRepository;
@@ -30,6 +32,7 @@ import org.zhan.recipe_backend.utils.JwtUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,6 +56,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserSavedRepository userSavedRepository;
+
+    @Autowired
+    private UserMapper userMapper;
 
     public Boolean registerUser(UserSingUpDto user ) {
 
@@ -144,5 +150,35 @@ public class UserServiceImpl implements UserService {
             dto.setIsLiked(true);
             return dto;
         });
+    }
+
+    @Override
+    public UserDto getUserById() {
+        Long currentUserId=AuthUtils.getCurrentUserIdOrNull();
+        Optional<User> user=  userRepository.findById(currentUserId);
+        UserDto userDto = userMapper.toUserDto(user.get());
+        recipeRepository.countByAuthorId(currentUserId);
+        userDto.setSavedCount(userSavedRepository.countByUserId(currentUserId));
+        userDto.setCreatedCount(recipeRepository.countByAuthorId(currentUserId));
+
+        return userDto;
+
+
+    }
+
+    @Override
+    public void updateAvatar(String newAvatarUrl) {
+        Long userId =AuthUtils.getCurrentUserIdOrNull();
+        User user = userRepository.getReferenceById(userId);
+        user.setAvatarUrl(newAvatarUrl);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void deleteAvatar() {
+        Long userId =AuthUtils.getCurrentUserIdOrNull();
+        User user = userRepository.getReferenceById(userId);
+        user.setAvatarUrl(null);
+        userRepository.save(user);
     }
 }

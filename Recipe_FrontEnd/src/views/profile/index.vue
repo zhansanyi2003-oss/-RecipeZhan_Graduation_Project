@@ -5,17 +5,18 @@ import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import RecipeCard from '../../component/recipeCard.vue'
 
-import { getMyRecipeApi, getSavedRecipeApi } from '../../api/user'
+import { getMyRecipeApi, getSavedRecipeApi, getUserInfoApi, deleteAvatarApi } from '../../api/user'
 // Active Tab
 const activeTab = ref('myRecipes')
 
 // Mock user information
 const userInfo = ref({
-  username: 'Chef Peipei',
-  avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png', // 默认给个头像测试删除功能
-  bio: 'Love exploring spicy food and baking desserts! 🍰🌶️',
-  createdCount: 12,
-  savedCount: 45,
+  username: '',
+  avatarUrl: '', // 默认给个头像测试删除功能
+  bio: '',
+  email: '',
+  createdCount: null,
+  savedCount: null,
 })
 
 // Mock preferences
@@ -29,16 +30,12 @@ const myRecipeList = ref([])
 const router = useRouter()
 // Get the first letter of the username
 const userInitial = computed(() => {
-  if (userInfo.value.username) {
-    return userInfo.value.username.charAt(0).toUpperCase()
-  }
-  return 'U' // Default fallback
+  return userInfo.value.username.charAt(0).toUpperCase()
 })
 
 // Avatar Upload Handlers
-const handleAvatarSuccess = (response, uploadFile) => {
-  // IMPORTANT: Update this with the URL returned by your Spring Boot backend!
-  userInfo.value.avatar = URL.createObjectURL(uploadFile.raw)
+const handleAvatarSuccess = (response) => {
+  userInfo.value.avatarUrl = response.data
   ElMessage.success('Avatar uploaded successfully!')
 }
 
@@ -56,6 +53,13 @@ const beforeAvatarUpload = (rawFile) => {
   }
   return true
 }
+
+const getUserInfo = async () => {
+  const result = await getUserInfoApi()
+  if (result.code) {
+    userInfo.value = result.data
+  }
+}
 const getMyrecipe = async () => {
   const result = await getMyRecipeApi()
   if (result.code) {
@@ -63,16 +67,19 @@ const getMyrecipe = async () => {
   }
 }
 // ================= 新增：移除头像的方法 =================
-const removeAvatar = () => {
+const removeAvatar = async () => {
   // 1. 清空前端显示的头像 URL
-  userInfo.value.avatar = ''
-
-  // 2. 提示用户
-  ElMessage.success('Avatar removed. Restored to default initial.')
-
-  // 3. (Konzulens tipp): 在真实的后端交互中，这里你应该调用一个 Axios API 来通知 Spring Boot 把数据库里的 avatar_url 设为 null
-  // axios.delete('/api/users/avatar').then(...)
+  userInfo.value.avatarUrl = ''
+  await deleteAvatarApi()
 }
+
+const uploadHeaders = computed(() => {
+  const token = localStorage.getItem('loginUser')
+  return {
+    Authorization: JSON.parse(token).Authorization,
+  }
+})
+
 const savedRecipeList = ref([])
 const savedPage = ref(1)
 const savedPageSize = ref(12)
@@ -129,6 +136,7 @@ const handleTabChange = (tabName) => {
 onMounted(() => {
   getMyrecipe()
   fetchSavedRecipes()
+  getUserInfo()
 })
 </script>
 
@@ -139,20 +147,26 @@ onMounted(() => {
         <div class="avatar-wrapper">
           <el-upload
             class="avatar-uploader"
-            action="http://localhost:8888/api/upload"
+            action="http://localhost:8888/api/users/avatar"
+            :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
             :before-upload="beforeAvatarUpload"
             title="Click to upload a new avatar"
           >
-            <el-avatar v-if="userInfo.avatar" :size="100" :src="userInfo.avatar" class="avatar" />
+            <el-avatar
+              v-if="userInfo.avatarUrl"
+              :size="100"
+              :src="userInfo.avatarUrl"
+              class="avatar"
+            />
             <el-avatar v-else :size="100" class="avatar initial-avatar">
               {{ userInitial }}
             </el-avatar>
           </el-upload>
 
           <el-button
-            v-if="userInfo.avatar"
+            v-if="userInfo.avatarUrl"
             type="danger"
             circle
             :icon="Delete"

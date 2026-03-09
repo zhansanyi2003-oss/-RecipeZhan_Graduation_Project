@@ -13,7 +13,7 @@ request.interceptors.response.use(
     return response.data
   },
   (error) => {
-    if (error.response.status === 401) {
+    if (error.response.status === 403) {
       router.push('/login')
     }
 
@@ -24,8 +24,8 @@ request.interceptors.response.use(
 request.interceptors.request.use(
   (config) => {
     const loginUser = JSON.parse(localStorage.getItem('loginUser'))
-    if (loginUser && loginUser.token) {
-      config.headers.token = loginUser.token
+    if (loginUser && loginUser.Authorization) {
+      config.headers.Authorization = loginUser.Authorization
     }
     return config
   },

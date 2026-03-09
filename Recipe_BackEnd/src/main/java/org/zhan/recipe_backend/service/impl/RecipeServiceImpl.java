@@ -67,14 +67,15 @@ public class RecipeServiceImpl implements RecipeService {
 
     @Transactional
     @Override
-    public void addRecipe(RecipeDetailDto dto, Long userId) {
+    public void addRecipe(RecipeDetailDto dto) {
         // ==========================================
         // 1. 基础属性与核心实体组装
         // ==========================================
         Recipe recipe = new Recipe();
         BeanUtils.copyProperties(dto, recipe);
+        long currentUserId=AuthUtils.getCurrentUserIdOrNull();
 
-        User author = userRepository.getReferenceById(userId);
+        User author = userRepository.getReferenceById(currentUserId);
         recipe.setAuthor(author);
 
         // ==========================================
@@ -161,7 +162,7 @@ public class RecipeServiceImpl implements RecipeService {
     }
 
 
-    private void syncToElasticsearch(Recipe recipe) {
+    public void syncToElasticsearch(Recipe recipe) {
         try {
             // 1. 组装基础属性 (使用 Builder 模式极其清爽)
             RecipeDoc.RecipeDocBuilder docBuilder = RecipeDoc.builder()

@@ -3,8 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Timer, Location, KnifeFork } from '@element-plus/icons-vue'
-import { getRecipeApi } from '../../api/recipe'
-import { submitRatingApi } from '../../api/recipe'
+import { getRecipeApi, submitRatingApi, deleteRatingApi } from '../../api/recipe'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,28 +46,37 @@ const handleRateChange = async (newScore) => {
 
     return // 彻底拦截，绝对不让代码往下执行去发后端请求！
   }
+  let res
 
-  if (!newScore || !recipe.value) return
-
-  try {
-    const res = await submitRatingApi({
-      recipeId: recipe.value.id,
-      score: newScore,
-    })
-
-    // 2. 判断后端是否处理成功 (假设 code 1 是成功，以你后端的实际设定为准)
+  if (newScore === 0) {
+    res = await deleteRatingApi(recipe.value.id)
+    console.log('ahahahha' + newScore)
     if (res.code) {
-      ElMessage.success('Thank you for your rating!')
-
-      // 3. 🌟 核心：无感刷新页面数据！
-      // 后端返回了新数据，我们直接把页面的变量替换掉
+      ElMessage.success('You successfully delete the rating')
       recipe.value.averageRating = res.data.newAverageRating
       recipe.value.ratingCount = res.data.newRatingCount
-    } else {
-      ElMessage.error(res.msg || 'Failed to submit rating.')
     }
-  } catch (error) {
-    ElMessage.error('Network error, please try again.')
+  } else {
+    try {
+      res = await submitRatingApi({
+        recipeId: recipe.value.id,
+        score: newScore,
+      })
+
+      // 2. 判断后端是否处理成功 (假设 code 1 是成功，以你后端的实际设定为准)
+      if (res.code) {
+        ElMessage.success('Thank you for your rating!')
+
+        // 3. 🌟 核心：无感刷新页面数据！
+        // 后端返回了新数据，我们直接把页面的变量替换掉
+        recipe.value.averageRating = res.data.newAverageRating
+        recipe.value.ratingCount = res.data.newRatingCount
+      } else {
+        ElMessage.error(res.msg || 'Failed to submit rating.')
+      }
+    } catch (error) {
+      ElMessage.error('Network error, please try again.')
+    }
   }
 }
 
