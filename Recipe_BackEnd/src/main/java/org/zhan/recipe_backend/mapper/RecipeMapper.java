@@ -17,14 +17,14 @@ public interface RecipeMapper {
     @Mapping(source = "recipeFlavours", target = "flavours")
     @Mapping(source = "recipeCourses", target = "courses")
     @Mapping(source = "recipeCuisines", target = "cuisines")
-    @Mapping(source = "ingredientsList", target = "ingredientTags")
-    // 🚨 架构师细节：忽略无法直接转换的字段，消除编译警告
-    @Mapping(target = "isLiked", ignore = true)
-    RecipeCardDto toCardDto(Recipe recipe);
+    @Mapping(source = "recipeIngredients", target = "ingredients")
+    @Mapping(source = "recipeDietTypes", target = "dietTypes")
+    RecipeDoc toRecipeDoc(Recipe recipe);
     @Mapping(source = "recipeFlavours", target = "flavours")
     @Mapping(source = "recipeCourses", target = "courses")
     @Mapping(source = "recipeCuisines", target = "cuisines")
-    // 注意：ingredientsList 和 steps 字段名两边一样，MapStruct 会自动去转！
+    @Mapping(source = "recipeDietTypes", target = "dietTypes")
+    @Mapping(source = "recipeIngredients", target = "ingredients")
     @Mapping(target = "isLiked", ignore = true)
     @Mapping(target = "userScore", ignore = true)
     RecipeDetailDto toDetailDto(Recipe recipe);
@@ -33,8 +33,7 @@ public interface RecipeMapper {
     @Mapping(source = "ingredient.name", target = "name")
     IngredientDto toIngredientDto(Recipe_Ingredient ri);
 
-    @Mapping(target = "isLiked", ignore = true)
-    RecipeCardDto docToCardDto(RecipeDoc doc);
+
 
     // ==========================================
     // 3. 字典表黑魔法提取区 (小对象 -> 纯字符串)
@@ -55,8 +54,16 @@ public interface RecipeMapper {
         return rc.getCuisine().getName();
     }
 
+    default String mapDietType (Recipe_DietType rd) {
+        if (rd == null || rd.getDietType() == null) return null;
+        return rd.getDietType().getName();
+    }
+
     default String mapIngredientToString(Recipe_Ingredient ri) {
         if (ri == null || ri.getIngredient() == null) return null;
         return ri.getIngredient().getName();
     }
+    @Mapping(source = "ingredients", target = "ingredientTags")
+    @Mapping(target = "isLiked", ignore = true)
+    RecipeCardDto docToCardDto(RecipeDoc doc);
 }

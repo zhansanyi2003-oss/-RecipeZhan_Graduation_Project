@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
         @UniqueConstraint(columnNames = {"user_id", "recipe_id"})
 })
 @Data
-public class RecipeRating {
+public class Recipe_Rating {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -1,39 +1,109 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Edit, Plus, Delete } from '@element-plus/icons-vue' // 引入 Delete 图标
+import { Edit, Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import RecipeCard from '../../component/recipeCard.vue'
 
-import { getMyRecipeApi, getSavedRecipeApi, getUserInfoApi, deleteAvatarApi } from '../../api/user'
-// Active Tab
+import {
+  getMyRecipeApi,
+  getSavedRecipeApi,
+  getUserInfoApi,
+  deleteAvatarApi,
+  getPreferenceApi,
+  updatePreferenceApi,
+} from '../../api/user'
+
+import { getAllCuisinesApi, getAllFlavoursApi, getAllIngredientsApi } from '../../api/recipeCard'
+
 const activeTab = ref('myRecipes')
 
-// Mock user information
 const userInfo = ref({
   username: '',
-  avatarUrl: '', // 默认给个头像测试删除功能
+  avatarUrl: '',
   bio: '',
   email: '',
   createdCount: null,
   savedCount: null,
 })
 
-// Mock preferences
-const preferences = ref({
-  spiceLevel: 'Medium',
-  dietary: ['Vegetarian', 'No Dairy'],
-  favoriteCuisines: ['Italian', 'Chinese'],
-})
-
 const myRecipeList = ref([])
 const router = useRouter()
-// Get the first letter of the username
+
 const userInitial = computed(() => {
-  return userInfo.value.username.charAt(0).toUpperCase()
+  return userInfo.value.username ? userInfo.value.username.charAt(0).toUpperCase() : ''
 })
 
-// Avatar Upload Handlers
+// ================= 🌟 新增/大改：全维度口味设置 (Food DNA) =================
+// 这些字段将作为参数发送给你的后端 Elasticsearch 推荐引擎
+const preferences = ref({
+  dietary: [],
+  allergies: [],
+  skillLevel: '',
+  timeAvailability: null,
+  flavours: [],
+  cuisines: [],
+})
+const cuisines = ref([])
+const flavours = ref([])
+const ingredients = ref([])
+const getFlavours = async () => {
+  const result = await getAllFlavoursApi()
+  if (result.code) {
+    flavours.value = result.data
+  }
+}
+const getCuisines = async () => {
+  const result = await getAllCuisinesApi()
+  if (result.code) {
+    cuisines.value = result.data
+  }
+}
+const getIngredients = async () => {
+  const result = await getAllIngredientsApi()
+  if (result.code) {
+    ingredients.value = result.data
+  }
+}
+// 供用户选择的选项常量
+const dietaryOptions = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Halal']
+
+// 模拟保存接口
+const handleSavePreferences = async () => {
+  try {
+    const res = await updatePreferenceApi(preferences.value)
+    if (res.code) {
+      // 假设 1 是成功状态码
+      ElMessage.success('Taste preferences saved! Your recommendations have been updated 🪄')
+    }
+  } catch (error) {
+    ElMessage.error(error.message)
+  }
+}
+
+const handleResetPreferences = () => {
+  // 直接把 preferences 的值覆盖回最干净的初始状态
+  preferences.value = {
+    dietary: [],
+    allergies: [],
+    skillLevel: '', // 恢复默认值
+    timeAvailability: '', // 恢复默认值
+    flavours: [],
+    cuisines: [],
+    ingredients: [],
+  }
+}
+const fetchUserPreferences = async () => {
+  try {
+    const res = await getPreferenceApi()
+    if (res.code && res.data) {
+      preferences.value = { ...preferences.value, ...res.data }
+    }
+  } catch (error) {
+    ElMessage.error(error.message)
+  }
+}
+
 const handleAvatarSuccess = (response) => {
   userInfo.value.avatarUrl = response.data
   ElMessage.success('Avatar uploaded successfully!')
@@ -41,7 +111,7 @@ const handleAvatarSuccess = (response) => {
 
 const beforeAvatarUpload = (rawFile) => {
   const isImage = rawFile.type === 'image/jpeg' || rawFile.type === 'image/png'
-  const isLt2M = rawFile.size / 1024 / 1024 < 2 // Max 2MB
+  const isLt2M = rawFile.size / 1024 / 1024 < 2
 
   if (!isImage) {
     ElMessage.error('Avatar picture must be JPG or PNG format!')
@@ -66,76 +136,68 @@ const getMyrecipe = async () => {
     myRecipeList.value = result.data
   }
 }
-// ================= 新增：移除头像的方法 =================
+
 const removeAvatar = async () => {
-  // 1. 清空前端显示的头像 URL
   userInfo.value.avatarUrl = ''
   await deleteAvatarApi()
 }
 
 const uploadHeaders = computed(() => {
   const token = localStorage.getItem('loginUser')
-  return {
-    Authorization: JSON.parse(token).Authorization,
-  }
+  return token ? { Authorization: JSON.parse(token).Authorization } : {}
 })
 
 const savedRecipeList = ref([])
 const savedPage = ref(1)
 const savedPageSize = ref(12)
-const hasMoreSaved = ref(true) // 是否还有下一页 (根据后端 Slice 的 last 属性判断)
-const loadingSaved = ref(false) // 防止重复点击加载
+const hasMoreSaved = ref(true)
+const loadingSaved = ref(false)
 
-// 🌟 2. 获取收藏食谱的方法
 const fetchSavedRecipes = async () => {
   if (loadingSaved.value || !hasMoreSaved.value) return
 
   loadingSaved.value = true
   try {
-    // 👇 导师模拟的假响应逻辑，真实对接时请删除这段模拟，用上面的 axios 👇
-    const result = await getSavedRecipeApi(savedPage, savedPageSize)
+    const result = await getSavedRecipeApi(savedPage.value, savedPageSize.value)
     if (result.code) {
       const sliceData = result.data
       if (sliceData && sliceData.content) {
         savedRecipeList.value.push(...sliceData.content)
       }
-
-      // 如果后端的 slice 表示这是最后一页 (last = true)，就把 hasMoreSaved 设为 false
       hasMoreSaved.value = !sliceData.last
-
-      // 页码 +1，为下次点击 Load More 做准备
       savedPage.value++
     }
   } catch (error) {
+    console.error(error)
   } finally {
     loadingSaved.value = false
   }
 }
-// 处理子组件传来的状态改变
+
 const handleLikeToggled = (recipeId, newStatus) => {
-  // 如果当前在 Saved 页面，并且用户点击了“取消收藏” (newStatus === false)
   if (!newStatus) {
-    // 直接用 filter 把这个食谱从前端数组里“剔除”掉，页面会瞬间丝滑消失，不需要刷新！
     savedRecipeList.value = savedRecipeList.value.filter((recipe) => recipe.id !== recipeId)
   }
 }
-// 当用户切换 Tab 时触发
+
 const handleTabChange = (tabName) => {
   if (tabName === 'myRecipes') {
-    // 重新获取我创建的食谱
     getMyrecipe()
   } else if (tabName === 'savedRecipes') {
-    // 🌟 重点：重置分页状态，重新获取第一页的收藏！
-    savedRecipeList.value = [] // 先清空旧数据
-    savedPage.value = 1 // 重置到第 1 页
-    hasMoreSaved.value = true // 恢复可加载状态
-    fetchSavedRecipes() // 重新调用你的获取收藏 API
+    savedRecipeList.value = []
+    savedPage.value = 1
+    hasMoreSaved.value = true
+    fetchSavedRecipes()
+  } else {
+    fetchUserPreferences()
+    getFlavours()
+    getCuisines()
+    getIngredients()
   }
 }
 
 onMounted(() => {
   getMyrecipe()
-  fetchSavedRecipes()
   getUserInfo()
 })
 </script>
@@ -242,7 +304,7 @@ onMounted(() => {
 
               <div v-else-if="!loadingSaved" class="empty-state-container">
                 <el-empty description="You haven't saved any recipes yet 🥺" image-size="200">
-                  <el-button type="primary" @click="router.push('/recipes')">
+                  <el-button type="primary" @click="router.push('/recipe')">
                     Go Explore Recipes
                   </el-button>
                 </el-empty>
@@ -267,24 +329,116 @@ onMounted(() => {
 
         <el-tab-pane label="Taste Preferences" name="preferences">
           <div class="preferences-panel">
-            <h3 class="pref-title">Your Food DNA</h3>
-            <p class="pref-desc">
-              Tell us what you like, and we'll recommend the best recipes for you.
-            </p>
-
-            <div class="pref-section">
-              <h4>Spice Level</h4>
-              <el-radio-group v-model="preferences.spiceLevel" size="large">
-                <el-radio-button label="None" />
-                <el-radio-button label="Mild" />
-                <el-radio-button label="Medium" />
-                <el-radio-button label="Spicy🔥" />
-              </el-radio-group>
+            <div class="pref-header">
+              <h3 class="pref-title">Your Food DNA 🧬</h3>
+              <p class="pref-desc">
+                Tell us what you love (and what you avoid). Our recommendation engine will tailor
+                the perfect recipes just for you.
+              </p>
             </div>
 
-            <el-button type="primary" size="large" class="save-pref-btn">
-              Save Preferences
-            </el-button>
+            <el-form label-position="top" class="pref-form">
+              <el-form-item label="Dietary Restrictions (Optional)">
+                <el-checkbox-group v-model="preferences.dietary">
+                  <el-checkbox-button v-for="diet in dietaryOptions" :key="diet" :value="diet">
+                    {{ diet }}
+                  </el-checkbox-button>
+                </el-checkbox-group>
+              </el-form-item>
+
+              <el-form-item label="Allergies & Dislikes (We will hide these)">
+                <el-select
+                  v-model="preferences.allergies"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="e.g. Peanut, Cilantro, Onion..."
+                  size="large"
+                  class="modern-select"
+                >
+                  <el-option v-for="item in ingredients" :key="item" :label="item" :value="item" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="Cooking Skill Level">
+                <el-radio-group v-model="preferences.skillLevel">
+                  <el-radio-button value="Beginner">🔪 Beginner</el-radio-button>
+                  <el-radio-button value="Intermediate">🍳 Intermediate</el-radio-button>
+                  <el-radio-button value="Master">👨‍🍳 Master</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="Time Availability (Max Cooking Time)">
+                <el-radio-group v-model="preferences.timeAvailability">
+                  <el-radio-button value="15">⏱️ < 15 mins</el-radio-button>
+                  <el-radio-button value="30">⏱️ < 30 mins</el-radio-button>
+                  <el-radio-button value="60">⏱️ < 60 mins</el-radio-button>
+                  <el-radio-button value="999">🍲 No Limit</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="Favorite Flavours (口味偏好)">
+                <el-select
+                  v-model="preferences.flavours"
+                  multiple
+                  filterable
+                  placeholder="Search or add flavours (e.g. Spicy, Sweet...)"
+                  size="large"
+                  class="modern-select"
+                >
+                  <el-option
+                    v-for="flavor in flavours"
+                    :key="flavor"
+                    :label="flavor"
+                    :value="flavor"
+                  />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="Favorite Cuisines (喜爱菜系)">
+                <el-select
+                  v-model="preferences.cuisines"
+                  multiple
+                  filterable
+                  placeholder="Select your favorite cuisines..."
+                  size="large"
+                  class="modern-select"
+                >
+                  <el-option
+                    v-for="cuisine in cuisines"
+                    :key="cuisine"
+                    :label="cuisine"
+                    :value="cuisine"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="Favorite Ingredients (喜爱菜系)">
+                <el-select
+                  v-model="preferences.ingredients"
+                  multiple
+                  filterable
+                  placeholder="Select your favorite ingredients..."
+                  size="large"
+                  class="modern-select"
+                >
+                  <el-option v-for="ing in ingredients" :key="ing" :label="ing" :value="ing" />
+                </el-select>
+              </el-form-item>
+
+              <div class="form-actions">
+                <el-button size="large" class="reset-pref-btn" @click="handleResetPreferences">
+                  Reset
+                </el-button>
+                <el-button
+                  color="#4ea685"
+                  size="large"
+                  class="save-pref-btn"
+                  @click="handleSavePreferences"
+                >
+                  Save My Food DNA
+                </el-button>
+              </div>
+            </el-form>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -319,7 +473,7 @@ onMounted(() => {
 
 /* ================= Avatar & Remove Button Styles ================= */
 .avatar-wrapper {
-  position: relative; /* 为删除按钮提供绝对定位的参照物 */
+  position: relative;
   display: inline-block;
 }
 
@@ -343,7 +497,6 @@ onMounted(() => {
   font-weight: bold;
 }
 
-/* 删除按钮样式 */
 .remove-avatar-btn {
   position: absolute;
   bottom: 0;
@@ -426,25 +579,22 @@ onMounted(() => {
   color: #4ea685;
 }
 
-/* ================= Tab 1: Create Recipe ================= */
-/* ================= Tab 1: Create Recipe (Flexbox 高度自动对齐) ================= */
+/* ================= Tab 1 & 2: Recipes Grid ================= */
 .recipe-grid {
   margin-top: 20px;
-  display: flex; /* 开启 Flex 布局 */
-  flex-wrap: wrap; /* 允许自动换行 */
-  align-items: stretch; /* 【核心！】让同一行内的所有元素拉伸到相同高度 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
 }
 
-/* 让 Element Plus 的列也变成 Flex 容器，这样里面的卡片才能撑满高度 */
 .recipe-grid > .el-col {
   display: flex;
-  margin-bottom: 24px; /* 把卡片的下边距移到外层列上，排版更规整 */
+  margin-bottom: 24px;
 }
 
 .create-new-card {
-  flex: 1; /* 【核心！】让新建按钮卡片占满整个 el-col 的高度 */
+  flex: 1;
   width: 100%;
-  /* 删除了之前的 height: 100% 和 min-height: 280px，由外层 flex 自动控制 */
   border: 2px dashed #d5ebe1;
   border-radius: 16px;
   display: flex;
@@ -458,7 +608,6 @@ onMounted(() => {
   cursor: pointer;
   background-color: #fafdfb;
   transition: all 0.3s;
-  /* margin-bottom 移除了，因为上面的 .el-col 已经加了 */
 }
 
 .create-new-card:hover {
@@ -467,7 +616,6 @@ onMounted(() => {
   transform: translateY(-4px);
 }
 
-/* ================= Tab 2: Saved ================= */
 .empty-state-container {
   width: 100%;
   display: flex;
@@ -475,7 +623,6 @@ onMounted(() => {
   padding: 40px 0;
 }
 
-/* ================= 分页加载区域 ================= */
 .pagination-footer {
   width: 100%;
   display: flex;
@@ -502,41 +649,125 @@ onMounted(() => {
   margin: 0;
 }
 
-.empty-state-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-/* ================= Tab 3: Preferences ================= */
+/* ================= 🌟 爆改的 Tab 3: Preferences ================= */
 .preferences-panel {
-  max-width: 600px;
-  margin-top: 20px;
+  max-width: 700px;
+  margin: 20px auto; /* 居中显示，像问卷一样优雅 */
+  background: #fafdfb;
+  padding: 40px;
+  border-radius: 16px;
+  border: 1px solid #eef7f4;
+}
+.pref-header {
+  text-align: center;
+  margin-bottom: 40px;
 }
 .pref-title {
-  font-size: 24px;
+  font-size: 26px;
+  font-weight: 900;
   color: #2c3e50;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .pref-desc {
-  color: #909399;
-  margin-bottom: 30px;
+  color: #606266;
+  font-size: 15px;
+  line-height: 1.6;
 }
-.pref-section {
-  margin-bottom: 30px;
-}
-.pref-section h4 {
+
+/* Element 表单深度覆盖 */
+:deep(.pref-form .el-form-item__label) {
   font-size: 16px;
-  color: #2c3e50;
-  margin-bottom: 15px;
-}
-.save-pref-btn {
-  background-color: #4ea685;
-  border: none;
-  border-radius: 8px;
-  padding: 0 40px;
   font-weight: bold;
+  color: #2c3e50;
+  padding-bottom: 10px;
+}
+:deep(.pref-form .el-form-item) {
+  margin-bottom: 30px;
+}
+
+/* ================= 🌟 高级定制：美化多选下拉框的 Tags ================= */
+
+/* 让下拉框本身看起来更高级、更像一个搜索栏 */
+
+/* 统一个性化按钮风格 */
+/* ================= 统一个性化按钮风格 (薄荷绿) ================= */
+
+/* 1. 默认状态下的样式（变成圆角药丸状，去掉难看的连体边框） */
+:deep(.el-radio-button__inner),
+:deep(.el-checkbox-button__inner) {
+  border-radius: 8px !important;
+  border: 1px solid #dcdfe6 !important;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  box-shadow: none !important;
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+/* 2. 🌟 激活/选中状态下的样式（变成主题薄荷绿！） */
+:deep(.el-radio-button.is-active .el-radio-button__inner),
+:deep(.el-checkbox-button.is-checked .el-checkbox-button__inner) {
+  background-color: #eef7f4 !important; /* 浅绿背景 */
+  border-color: #4ea685 !important; /* 深绿边框 */
+  color: #4ea685 !important; /* 深绿文字 */
+  font-weight: bold;
+  box-shadow: 0 0 0 1px #4ea685 inset !important; /* 加深一点边框质感 */
+}
+
+/* 3. 修复 Element Plus 默认的聚焦阴影干扰 */
+:deep(.el-radio-button__original:focus:not(:focus-visible) + .el-radio-button__inner) {
+  box-shadow: none !important;
+}
+
+:deep(.modern-select .el-select__wrapper),
+:deep(.modern-select .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #d5ebe1 inset !important;
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+/* 2. 鼠标悬浮（Hover）：变成标准薄荷绿 */
+:deep(.modern-select .el-select__wrapper:hover),
+:deep(.modern-select .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #4ea685 inset !important;
+}
+
+/* 3. 点击聚焦（Focus/Active）：变成加粗的薄荷绿，安全感拉满 */
+:deep(.modern-select .el-select__wrapper.is-focused),
+:deep(.modern-select .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #4ea685 inset !important;
+  background-color: #fafdfb !important; /* 聚焦时给一点极其微弱的绿底色 */
+}
+
+.form-actions {
+  margin-top: 50px;
+  display: flex;
+  justify-content: center;
+  gap: 20px; /* 🌟 让两个按钮之间有一段舒适的距离 */
+}
+
+/* 🌟 Reset 按钮的高级感样式 */
+.reset-pref-btn {
+  border-radius: 12px;
+  padding: 24px 40px;
+  font-size: 16px;
+  transition: transform 0.2s;
+}
+.reset-pref-btn:hover {
+  transform: translateY(-2px);
+  color: #4ea685;
+  border-color: #4ea685;
+  background-color: #eef7f4;
+}
+
+/* 原有的 Save 按钮样式保持不变，但如果你之前没加悬浮动画，可以确保有下面这句 */
+.save-pref-btn {
+  border-radius: 12px;
+  padding: 24px 80px;
+  font-size: 18px;
+  box-shadow: 0 8px 20px rgba(78, 166, 133, 0.2);
+  transition: transform 0.2s;
+}
+.save-pref-btn:hover {
+  transform: translateY(-2px);
 }
 
 /* Responsive */
@@ -558,6 +789,9 @@ onMounted(() => {
   }
   .profile-content {
     padding: 15px;
+  }
+  .preferences-panel {
+    padding: 20px;
   }
 }
 </style>

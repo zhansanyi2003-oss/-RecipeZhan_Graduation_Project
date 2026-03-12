@@ -13,7 +13,6 @@ import org.zhan.recipe_backend.repository.*;
 import org.zhan.recipe_backend.service.RecipeService;
 import org.zhan.recipe_backend.utils.AuthUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +45,8 @@ public class RecipeServiceImpl implements RecipeService {
 
     @Autowired
     private RatingRepository ratingRepository;
+    @Autowired
+    private DietTypeRepository dietTypeRepository;
     @Override
     public RecipeDetailDto getRecipes(Long id) {
         Recipe recipe = recipeRepository.findById(id)
@@ -55,7 +56,7 @@ public class RecipeServiceImpl implements RecipeService {
         if ( currentUserId!= null) {
             boolean isLiked = userSavedRepository.existsByUserIdAndRecipeId(currentUserId, id);
             dto.setIsLiked(isLiked);
-            Optional<RecipeRating> rating = ratingRepository.findByUserIdAndRecipeId(currentUserId, id);
+            Optional<Recipe_Rating> rating = ratingRepository.findByUserIdAndRecipeId(currentUserId, id);
             rating.ifPresent(r -> dto.setUserScore(r.getScore()));
         } else {
             dto.setIsLiked(false);
@@ -78,13 +79,12 @@ public class RecipeServiceImpl implements RecipeService {
         User author = userRepository.getReferenceById(currentUserId);
         recipe.setAuthor(author);
 
-        // ==========================================
-        // 2. 极其优雅的关联表处理 (调用私有方法)
-        // ==========================================
+
         recipe.setRecipeFlavours(buildFlavours(dto.getFlavours(), recipe));
         recipe.setRecipeCourses(buildCourses(dto.getCourses(), recipe));
         recipe.setRecipeCuisines(buildCuisines(dto.getCuisines(), recipe));
-        recipe.setIngredientsList(buildIngredients(dto.getIngredientsList(), recipe));
+        recipe.setRecipeIngredients(buildIngredients(dto.getIngredients(), recipe));
+        recipe.setRecipeDietTypes(buildDietType(dto.getDietTypes(),recipe));
         recipe.setSteps(buildSteps(dto.getSteps(), recipe));
 
         Recipe savedRecipe = recipeRepository.save(recipe);
@@ -132,6 +132,18 @@ public class RecipeServiceImpl implements RecipeService {
         }).collect(Collectors.toList());
     }
 
+    private List<Recipe_DietType> buildDietType(List<String> names, Recipe recipe) {
+        if (names == null) return new ArrayList<>();
+        return names.stream().map(name -> {
+            DietType dietType = dietTypeRepository.findByName(name)
+                    .orElseGet(() -> dietTypeRepository.save(DietType.builder().name(name).build()));
+            Recipe_DietType relation = new Recipe_DietType();
+            relation.setRecipe(recipe);
+            relation.setDietType(dietType);
+            return relation;
+        }).collect(Collectors.toList());
+    }
+
     private List<Recipe_Ingredient> buildIngredients(List<IngredientDto> dtos, Recipe recipe) {
         if (dtos == null) return new ArrayList<>();
         return dtos.stream().map(ingDto -> {
@@ -165,45 +177,9 @@ public class RecipeServiceImpl implements RecipeService {
     public void syncToElasticsearch(Recipe recipe) {
         try {
             // 1. 组装基础属性 (使用 Builder 模式极其清爽)
-            RecipeDoc.RecipeDocBuilder docBuilder = RecipeDoc.builder()
-                    .id(recipe.getId()) // 🚨 极度重要：ES 的 ID 必须和 PG 的主键 ID 完全一致！
-                    .title(recipe.getTitle())
-                    .description(recipe.getDescription())
-                    .cookingTimeMin(recipe.getCookingTimeMin())
-                    .coverImage(recipe.getCoverImage())
-                    // 如果刚创建还没人打分，默认给 0.0
-                    .averageRating(recipe.getAverageRating() != null ? recipe.getAverageRating() : 0.0)
-                    // 枚举转成纯字符串
-                    .difficulty(recipe.getDifficulty() != null ? recipe.getDifficulty().name() : null);
-
-            // 2. 将复杂的网状关系表“压扁”成单纯的字符串数组 (Flattening)
-            if (recipe.getRecipeFlavours() != null) {
-                docBuilder.flavours(recipe.getRecipeFlavours().stream()
-                        .map(rf -> rf.getFlavour().getName())
-                        .collect(Collectors.toList()));
-            }
-
-            if (recipe.getRecipeCourses() != null) {
-                docBuilder.courses(recipe.getRecipeCourses().stream()
-                        .map(rc -> rc.getCourse().getName())
-                        .collect(Collectors.toList()));
-            }
-
-            if (recipe.getRecipeCuisines() != null) {
-                docBuilder.cuisines(recipe.getRecipeCuisines().stream()
-                        .map(rc -> rc.getCuisine().getName())
-                        .collect(Collectors.toList()));
-            }
-
-            // 🌟 食材处理：ES 只是用来搜索的，所以我们只要食材名字，不管用量 (amount)
-            if (recipe.getIngredientsList() != null) {
-                docBuilder.ingredients(recipe.getIngredientsList().stream()
-                        .map(ri -> ri.getIngredient().getName())
-                        .collect(Collectors.toList()));
-            }
 
             // 3. 一键发送给 Elasticsearch 引擎！
-            RecipeDoc esDoc = docBuilder.build();
+            RecipeDoc esDoc = recipeMapper.toRecipeDoc(recipe);
             recipeEsRepository.save(esDoc);
 
 

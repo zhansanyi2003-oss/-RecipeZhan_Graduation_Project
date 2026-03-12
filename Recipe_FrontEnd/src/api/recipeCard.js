@@ -9,3 +9,15 @@ export const getAllCuisinesApi = () => {
 export const getAllFlavoursApi = () => {
   return request.get(`/recipes/flavours`)
 }
+
+export const getAllIngredientsApi = () => {
+  return request.get(`/recipes/ingredients`)
+}
+export const getCarouselCardApi = () => {
+  const currentLocalHour = new Date().getHours()
+  return request.get(`/recipes/recc`, {
+    params: {
+      localHour: currentLocalHour,
+    },
+  })
+}

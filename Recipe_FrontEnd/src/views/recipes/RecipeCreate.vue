@@ -1,66 +1,50 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 // 引入拖拽组件
 import draggable from 'vuedraggable'
 // 引入图标
-import { CameraFilled, Operation, MoreFilled, Plus, Picture } from '@element-plus/icons-vue'
-// 引入你的API
+import { CameraFilled, Operation, MoreFilled, Plus, Picture, Delete } from '@element-plus/icons-vue'
 import { createRecipeApi } from '../../api/recipe'
+import { getAllFlavoursApi, getAllCuisinesApi } from '../../api/recipeCard'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const submitting = ref(false)
 const ruleFormRef = ref()
 
-// 📝 表单数据
 const form = ref({
   title: '',
   description: '',
   coverImage: '',
-  cookingTimeMin: undefined, // 使用 undefined 或 null 避免初始显示 0
+  cookingTimeMin: undefined,
   difficulty: null,
   courses: [],
   cuisines: [],
   flavours: [],
+  diets: [],
 
-  // 🥬 初始化给 2 个空食材，引导用户填写
-  ingredientsList: [
+  ingredients: [
     { id: Date.now(), name: '', amount: '', note: '' },
     { id: Date.now() + 1, name: '', amount: '', note: '' },
   ],
 
-  // 🍳 初始化给 2 个空步骤
   steps: [
     { id: Date.now(), content: '', imageUrls: [] },
     { id: Date.now() + 1, content: '', imageUrls: [] },
   ],
 })
 
-// 📏 校验规则 (针对普通字段)
 const rules = ref({
   title: [
-    { required: true, message: 'Please type the title', trigger: 'blur' },
-    { min: 3, max: 40, message: 'Length must be 3 - 40 characters', trigger: 'blur' },
+    { required: true, message: 'Please enter a recipe title', trigger: 'blur' },
+    { min: 3, max: 60, message: 'Length must be 3 - 60 characters', trigger: 'blur' },
   ],
-  description: [{ required: true, message: 'Please type the description', trigger: 'blur' }],
+  description: [{ required: true, message: 'Please add a short description', trigger: 'blur' }],
   coverImage: [{ required: true, message: 'Please upload a cover image', trigger: 'change' }],
-  cookingTimeMin: [{ required: true, message: 'Please enter cooking time', trigger: 'blur' }],
-  difficulty: [{ required: true, message: 'Please select difficulty', trigger: 'change' }],
-  courses: [
-    {
-      type: 'array',
-      required: true,
-      message: 'Please select at least one course',
-      trigger: 'change',
-    },
-  ],
-  cuisines: [
-    { type: 'array', required: true, message: 'Please select cuisines', trigger: 'change' },
-  ],
-  flavours: [
-    { type: 'array', required: true, message: 'Please select flavours', trigger: 'change' },
-  ],
+  cookingTimeMin: [{ required: true, message: 'Required', trigger: 'blur' }],
+  difficulty: [{ required: true, message: 'Required', trigger: 'change' }],
+  courses: [{ type: 'array', required: true, message: 'Required', trigger: 'change' }],
 })
 
 const uploadActionUrl = 'http://localhost:8888/api/upload'
@@ -69,7 +53,6 @@ const handleCoverSuccess = (response) => {
   if (response.code === 1) {
     form.value.coverImage = response.data
     ElMessage.success('Cover image uploaded!')
-    // 上传成功后，手动触发一次校验，消除红字报错
     ruleFormRef.value.validateField('coverImage')
   } else {
     ElMessage.error('Upload failed: ' + response.msg)
@@ -79,78 +62,51 @@ const handleCoverSuccess = (response) => {
 const handleStepImgSuccess = (response, index) => {
   if (response.code === 1) {
     form.value.steps[index].imageUrls = [response.data]
-    ElMessage.success('Step image uploaded!')
   } else {
     ElMessage.error('Upload failed')
   }
 }
 
 const beforeUpload = (file) => {
-  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
-  const isLt2M = file.size / 1024 / 1024 < 5
-  if (!isJPG) ElMessage.error('JPG/PNG format only!')
-  if (!isLt2M) ElMessage.error('Image size must be less than 5MB!')
-  return isJPG && isLt2M
+  const isImage =
+    file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp'
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isImage) ElMessage.error('JPG/PNG/WEBP format only!')
+  if (!isLt5M) ElMessage.error('Image size must be less than 5MB!')
+  return isImage && isLt5M
 }
 
-// === 🥬 食材操作逻辑 ===
 const addIngredient = () => {
-  form.value.ingredientsList.push({ id: Date.now(), name: '', amount: '', note: '' })
+  form.value.ingredients.push({ id: Date.now(), name: '', amount: '', note: '' })
+}
+const removeIngredient = (index) => {
+  form.value.ingredients.splice(index, 1)
 }
 
-const handleIngCommand = (command, index) => {
-  if (command === 'delete') {
-    form.value.ingredientsList.splice(index, 1)
-  }
-}
-
-// === 🍳 步骤操作逻辑 ===
 const addStep = () => {
   form.value.steps.push({ id: Date.now(), content: '', imageUrls: [] })
 }
-
-const handleStepCommand = (command, index) => {
-  if (command === 'delete') {
-    form.value.steps.splice(index, 1)
-  }
+const removeStep = (index) => {
+  form.value.steps.splice(index, 1)
 }
 
-// === 🚀 提交逻辑 (核心校验) ===
 const submitRecipe = async () => {
   if (!ruleFormRef.value) return
 
-  // 1️⃣ 手动校验食材列表
-  const ingredients = form.value.ingredientsList
-  if (ingredients.length < 2) {
-    ElMessage.warning('Please add at least 2 ingredients!')
+  const ingredients = form.value.ingredients
+  if (ingredients.length < 1 || !ingredients[0].name.trim()) {
+    ElMessage.warning('Please add at least one ingredient.')
     return
   }
-  for (let i = 0; i < ingredients.length; i++) {
-    const item = ingredients[i]
-    if (!item.name?.trim() || !item.amount?.trim()) {
-      ElMessage.warning(`Ingredient #${i + 1} is incomplete. Please fill in name and amount.`)
-      return
-    }
-  }
 
-  // 2️⃣ 手动校验步骤列表
   const steps = form.value.steps
-  if (steps.length < 2) {
-    ElMessage.warning('Please add at least 2 steps!')
+  if (steps.length < 1 || !steps[0].content.trim()) {
+    ElMessage.warning('Please add at least one step.')
     return
   }
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i]
-    if (!step.content?.trim()) {
-      ElMessage.warning(`Step #${i + 1} description cannot be empty.`)
-      return
-    }
-  }
 
-  // 3️⃣ Element Plus 统一校验普通字段
-  await ruleFormRef.value.validate(async (valid, fields) => {
+  await ruleFormRef.value.validate(async (valid) => {
     if (valid) {
-      // ✅ 校验全部通过
       submitting.value = true
       try {
         const res = await createRecipeApi(form.value)
@@ -161,413 +117,703 @@ const submitRecipe = async () => {
           ElMessage.error(res.msg || 'Publish failed')
         }
       } catch (error) {
-        console.error(error)
         ElMessage.error('Network error, please try again.')
       } finally {
         submitting.value = false
       }
     } else {
-      // ❌ 校验失败
-      ElMessage.error('Please check the form for errors (marked in red).')
-      return false
+      ElMessage.error('Please check the form for missing fields.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   })
 }
+const flavours = ref([])
+const cuisines = ref([])
+
+const getFlavous = async () => {
+  const result = await getAllFlavoursApi()
+  if (result.code) {
+    flavours.value = result.data
+  }
+}
+const getCuisines = async () => {
+  const result = await getAllCuisinesApi()
+  if (result.code) {
+    cuisines.value = result.data
+  }
+}
+
+onMounted(() => {
+  getFlavous()
+  getCuisines()
+})
 </script>
 
 <template>
-  <div class="create-page">
-    <div class="page-header">
-      <h2 class="page-title">Create New Recipe</h2>
-      <div class="actions">
-        <el-button type="primary" size="large" @click="submitRecipe" :loading="submitting">
-          Publish
-        </el-button>
+  <div class="create-page-wrapper">
+    <div class="sticky-header">
+      <div class="header-content">
+        <h2 class="page-title">Create a Masterpiece</h2>
+        <div class="actions">
+          <el-button plain round @click="router.back()">Cancel</el-button>
+          <el-button
+            color="#4ea685"
+            round
+            size="large"
+            @click="submitRecipe"
+            :loading="submitting"
+            class="publish-btn"
+          >
+            Publish Recipe
+          </el-button>
+        </div>
       </div>
     </div>
 
-    <el-form :model="form" :rules="rules" ref="ruleFormRef" label-position="top" class="main-form">
-      <div class="section-card upload-section">
-        <el-form-item prop="coverImage" style="margin-bottom: 0">
-          <el-upload
-            class="cover-uploader"
-            :action="uploadActionUrl"
-            name="file"
-            :show-file-list="false"
-            :on-success="handleCoverSuccess"
-            :before-upload="beforeUpload"
-          >
-            <img v-if="form.coverImage" :src="form.coverImage" class="cover-image" />
-            <div v-else class="upload-placeholder">
-              <el-icon class="upload-icon"><CameraFilled /></el-icon>
-              <div class="upload-text">Upload Cover</div>
-            </div>
-          </el-upload>
-        </el-form-item>
-
-        <div class="basic-inputs">
-          <el-form-item prop="title">
-            <el-input
-              v-model="form.title"
-              placeholder="Give your recipe a title"
-              class="title-input"
-              size="large"
-            />
-          </el-form-item>
-
-          <el-form-item prop="description">
-            <el-input
-              v-model="form.description"
-              type="textarea"
-              :rows="3"
-              placeholder="Share the story behind your recipe..."
-              class="desc-input"
-            />
-          </el-form-item>
-        </div>
-      </div>
-
-      <div class="section-card meta-section">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="Cooking time" prop="cookingTimeMin">
-              <el-input-number v-model="form.cookingTimeMin" :min="1" :step="5" style="width: 100%">
-                <template #suffix>mins</template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="6">
-            <el-form-item label="Difficulty" prop="difficulty">
-              <el-select v-model="form.difficulty" placeholder="Select level" style="width: 100%">
-                <el-option label="Easy" value="EASY" />
-                <el-option label="Medium" value="MEDIUM" />
-                <el-option label="Hard" value="HARD" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="6">
-            <el-form-item label="Courses" prop="courses">
-              <el-select
-                v-model="form.courses"
-                multiple
-                placeholder="Select courses"
-                style="width: 100%"
-              >
-                <el-option label="Breakfast" value="BREAKFAST" />
-                <el-option label="Lunch" value="LUNCH" />
-                <el-option label="Dinner" value="DINNER" />
-                <el-option label="Dessert" value="DESSERT" />
-                <el-option label="Snack" value="SNACK" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="6">
-            <el-form-item label="Cuisines" prop="cuisines">
-              <el-select
-                v-model="form.cuisines"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                placeholder="e.g. Italian"
-                style="margin-bottom: 5px; width: 100%"
-              />
-              <el-select
-                v-model="form.flavours"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                placeholder="Flavours (e.g. Spicy)"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </div>
-
-      <div class="content-split">
-        <el-row :gutter="40">
-          <el-col :span="10">
-            <div class="section-header">
-              <h3>Ingredients</h3>
-            </div>
-            <draggable
-              v-model="form.ingredientsList"
-              item-key="id"
-              handle=".drag-handle"
-              animation="200"
-            >
-              <template #item="{ element, index }">
-                <div class="list-item ingredient-item">
-                  <el-icon class="drag-handle"><Operation /></el-icon>
-                  <div class="inputs">
-                    <el-input v-model="element.name" placeholder="Item name (e.g. Egg)" />
-                    <el-input v-model="element.amount" placeholder="Amount (e.g. 2 pcs)" />
-                    <el-input v-model="element.note" placeholder="Note" size="small" />
-                  </div>
-                  <el-dropdown trigger="click" @command="handleIngCommand($event, index)">
-                    <el-icon class="more-btn"><MoreFilled /></el-icon>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="delete" style="color: red"
-                          >Delete</el-dropdown-item
-                        >
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </template>
-            </draggable>
-            <el-button class="add-btn" @click="addIngredient" plain icon="Plus"
-              >Add ingredient</el-button
-            >
-          </el-col>
-
-          <el-col :span="14">
-            <div class="section-header">
-              <h3>Steps</h3>
-            </div>
-            <draggable v-model="form.steps" item-key="id" handle=".drag-handle" animation="200">
-              <template #item="{ element, index }">
-                <div class="list-item step-item">
-                  <div class="step-left">
-                    <el-icon class="drag-handle"><Operation /></el-icon>
-                    <span class="step-index">{{ index + 1 }}</span>
-                  </div>
-                  <div class="step-content">
-                    <el-input
-                      v-model="element.content"
-                      type="textarea"
-                      :rows="3"
-                      placeholder="Explain this step..."
-                    />
-                    <div class="step-image-uploader">
-                      <el-upload
-                        :action="uploadActionUrl"
-                        name="file"
-                        :show-file-list="false"
-                        :on-success="(res) => handleStepImgSuccess(res, index)"
-                      >
-                        <div
-                          v-if="element.imageUrls && element.imageUrls.length > 0"
-                          class="step-img-preview"
-                        >
-                          <img :src="element.imageUrls[0]" />
-                        </div>
-                        <div v-else class="step-img-placeholder">
-                          <el-icon><Picture /></el-icon>
-                        </div>
-                      </el-upload>
+    <div class="create-container">
+      <el-form :model="form" :rules="rules" ref="ruleFormRef" label-position="top">
+        <div class="meta-card top-overview-card">
+          <el-row :gutter="40">
+            <el-col :xs="24" :md="10">
+              <el-form-item prop="coverImage" class="m-0">
+                <el-upload
+                  class="classic-uploader"
+                  :action="uploadActionUrl"
+                  name="file"
+                  :show-file-list="false"
+                  :on-success="handleCoverSuccess"
+                  :before-upload="beforeUpload"
+                >
+                  <div v-if="form.coverImage" class="cover-image-preview">
+                    <img :src="form.coverImage" />
+                    <div class="cover-hover-mask">
+                      <el-icon><CameraFilled /></el-icon> Change Cover
                     </div>
                   </div>
-                  <el-dropdown trigger="click" @command="handleStepCommand($event, index)">
-                    <el-icon class="more-btn"><MoreFilled /></el-icon>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="delete" style="color: red"
-                          >Delete</el-dropdown-item
+                  <div v-else class="upload-placeholder">
+                    <div class="icon-circle">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                    <span class="upload-title">Upload Cover Photo</span>
+                    <span class="upload-hint">Format: JPG/PNG, Max: 5MB</span>
+                  </div>
+                </el-upload>
+              </el-form-item>
+            </el-col>
+
+            <el-col :xs="24" :md="14" class="right-info-col">
+              <el-form-item label="Recipe Title" prop="title">
+                <el-input
+                  v-model="form.title"
+                  placeholder="e.g. Grandma's Apple Pie"
+                  class="modern-input title-input"
+                  size="large"
+                />
+              </el-form-item>
+
+              <el-form-item label="Description" prop="description" class="m-0">
+                <el-input
+                  v-model="form.description"
+                  type="textarea"
+                  :rows="6"
+                  placeholder="Share the story behind your recipe. What makes it special? Any tips for the perfect result?"
+                  class="modern-input desc-input"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <div class="meta-card">
+          <h3 class="section-title">Recipe Details</h3>
+          <el-row :gutter="30">
+            <el-col :xs="12" :sm="8">
+              <el-form-item label="Cooking Time" prop="cookingTimeMin">
+                <el-input-number
+                  v-model="form.cookingTimeMin"
+                  :min="1"
+                  :step="5"
+                  class="w-full"
+                  size="large"
+                >
+                  <template #suffix>mins</template>
+                </el-input-number>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="12" :sm="8">
+              <el-form-item label="Difficulty" prop="difficulty">
+                <el-select
+                  v-model="form.difficulty"
+                  placeholder="Select"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option label="🌟 Easy" value="EASY" />
+                  <el-option label="🍳 Medium" value="MEDIUM" />
+                  <el-option label="🔥 Hard" value="HARD" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="12" :sm="8">
+              <el-form-item label="Course" prop="courses">
+                <el-select
+                  v-model="form.courses"
+                  multiple
+                  placeholder="e.g. Dinner"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option label="Breakfast" value="BREAKFAST" />
+                  <el-option label="Lunch" value="LUNCH" />
+                  <el-option label="Dinner" value="DINNER" />
+                  <el-option label="Dessert" value="DESSERT" />
+                  <el-option label="Snack" value="SNACK" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="30" class="mt-4">
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="Cuisine (Optional)" prop="cuisines">
+                <el-select
+                  v-model="form.cuisines"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="e.g. Italian"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option v-for="item in cuisines" :key="item" :label="item" :value="item" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="Flavours (Optional)" prop="flavours">
+                <el-select
+                  v-model="form.flavours"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="e.g. Spicy"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option v-for="item in flavours" :key="item" :label="item" :value="item" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="8">
+              <el-form-item label="Dietary (Optional)" prop="diets">
+                <el-select
+                  v-model="form.diets"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="e.g. Vegan"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option label="Vegetarian" value="Vegetarian" />
+                  <el-option label="Vegan" value="Vegan" />
+                  <el-option label="Gluten-Free" value="Gluten-Free" />
+                  <el-option label="Dairy-Free" value="Dairy-Free" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <div class="content-split">
+          <el-row :gutter="40">
+            <el-col :xs="24" :lg="8">
+              <div class="section-header">
+                <h3>Ingredients</h3>
+              </div>
+              <draggable
+                v-model="form.ingredients"
+                item-key="id"
+                handle=".drag-handle"
+                animation="200"
+                class="drag-list"
+              >
+                <template #item="{ element, index }">
+                  <div class="modern-list-item">
+                    <el-icon class="drag-handle"><Operation /></el-icon>
+                    <div class="item-inputs ingredient-inputs">
+                      <el-input
+                        v-model="element.name"
+                        placeholder="Name (e.g. Flour)"
+                        class="ghost-input fw-bold"
+                      />
+                      <el-input
+                        v-model="element.amount"
+                        placeholder="Amount (e.g. 200g)"
+                        class="ghost-input"
+                      />
+                      <el-input
+                        v-model="element.note"
+                        placeholder="Prep note (e.g. sifted)"
+                        class="ghost-input text-small"
+                      />
+                    </div>
+                    <el-button
+                      type="danger"
+                      text
+                      circle
+                      :icon="Delete"
+                      @click="removeIngredient(index)"
+                      class="delete-btn"
+                    />
+                  </div>
+                </template>
+              </draggable>
+              <el-button
+                color="#eef7f4"
+                class="add-btn"
+                @click="addIngredient"
+                round
+                style="color: #4ea685"
+              >
+                <el-icon class="mr-1"><Plus /></el-icon> Add Ingredient
+              </el-button>
+            </el-col>
+
+            <el-col :xs="24" :lg="16">
+              <div class="section-header">
+                <h3>Instructions</h3>
+              </div>
+              <draggable
+                v-model="form.steps"
+                item-key="id"
+                handle=".drag-handle"
+                animation="200"
+                class="drag-list"
+              >
+                <template #item="{ element, index }">
+                  <div class="modern-list-item step-item">
+                    <el-icon class="drag-handle"><Operation /></el-icon>
+                    <div class="step-number">{{ index + 1 }}</div>
+
+                    <div class="item-inputs step-content">
+                      <el-input
+                        v-model="element.content"
+                        type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 5 }"
+                        placeholder="Explain this step in detail..."
+                        class="ghost-textarea"
+                      />
+
+                      <div class="step-image-area">
+                        <el-upload
+                          class="step-uploader"
+                          :action="uploadActionUrl"
+                          name="file"
+                          :show-file-list="false"
+                          :on-success="(res) => handleStepImgSuccess(res, index)"
                         >
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </template>
-            </draggable>
-            <el-button class="add-btn" @click="addStep" plain icon="Plus">Add step</el-button>
-          </el-col>
-        </el-row>
-      </div>
-    </el-form>
+                          <div
+                            v-if="element.imageUrls && element.imageUrls.length > 0"
+                            class="step-img-preview"
+                          >
+                            <img :src="element.imageUrls[0]" />
+                            <div class="img-hover-mask">
+                              <el-icon><CameraFilled /></el-icon>
+                            </div>
+                          </div>
+                          <div v-else class="step-img-placeholder">
+                            <el-icon><Picture /></el-icon>
+                            <span>Add Photo</span>
+                          </div>
+                        </el-upload>
+                      </div>
+                    </div>
+
+                    <el-button
+                      type="danger"
+                      text
+                      circle
+                      :icon="Delete"
+                      @click="removeStep(index)"
+                      class="delete-btn step-del-btn"
+                    />
+                  </div>
+                </template>
+              </draggable>
+              <el-button
+                color="#eef7f4"
+                class="add-btn"
+                @click="addStep"
+                round
+                style="color: #4ea685"
+              >
+                <el-icon class="mr-1"><Plus /></el-icon> Add Next Step
+              </el-button>
+            </el-col>
+          </el-row>
+        </div>
+      </el-form>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.create-page {
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 0 20px;
+.create-page-wrapper {
+  background-color: #f9fafb;
+  min-height: 100vh;
+  padding-bottom: 100px;
 }
 
-.page-header {
+/* ================= 悬浮吸顶 Header ================= */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #eef0f4;
+  padding: 15px 0;
+}
+.header-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+}
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  color: #2c3e50;
+  font-weight: 800;
+}
+.publish-btn {
+  font-weight: bold;
 }
 
-.main-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.create-container {
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 0 20px;
 }
 
-.section-card {
+/* ================= 🌟 重点优化：通用白色卡片 ================= */
+.meta-card {
   background: white;
   padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  margin-bottom: 40px;
+  border: 1px solid #f0f2f5;
 }
 
-/* 封面上传区 */
-.upload-section {
-  display: flex;
-  gap: 30px;
-  align-items: flex-start;
-}
-.cover-uploader {
-  width: 240px;
-  height: 240px;
-  flex-shrink: 0;
-  border: 2px dashed #dcdfe6;
-  border-radius: 8px;
+/* ================= 🌟 重点优化：经典封面上传区 ================= */
+.classic-uploader {
+  width: 100%;
+  height: 280px; /* 固定高度，完美契合右侧表单高度 */
+  border-radius: 12px;
+  border: 2px dashed #d5ebe1;
+  background: #fafdfb;
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.3s;
+  cursor: pointer;
+  transition: all 0.3s;
 }
-.cover-uploader:hover {
-  border-color: #409eff;
+.classic-uploader:hover {
+  border-color: #4ea685;
+  background: #eef7f4;
 }
-.cover-image {
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #4ea685;
+}
+.icon-circle {
+  width: 56px;
+  height: 56px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(78, 166, 133, 0.15);
+  margin-bottom: 16px;
+}
+.upload-title {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.upload-hint {
+  font-size: 13px;
+  color: #909399;
+}
+.cover-image-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.cover-image-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.upload-placeholder {
-  text-align: center;
-  color: #909399;
-}
-.upload-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.basic-inputs {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.title-input :deep(.el-input__wrapper) {
-  box-shadow: none;
-  border-bottom: 1px solid #dcdfe6;
-  padding-left: 0;
-  border-radius: 0;
-}
-.title-input :deep(.el-input__inner) {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-/* 列表通用样式 */
-.content-split {
-  margin-top: 20px;
-}
-.section-header {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-.section-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-/* 拖拽项样式 */
-.list-item {
-  background: #f8f9fa;
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  transition: background 0.3s;
-}
-.list-item:hover {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.drag-handle {
-  cursor: grab;
-  color: #909399;
-  margin-top: 10px;
-  font-size: 18px;
-}
-.more-btn {
-  cursor: pointer;
-  color: #c0c4cc;
-  margin-top: 10px;
-  transform: rotate(90deg);
-}
-.more-btn:hover {
-  color: #409eff;
-}
-
-/* 食材项特有 */
-.ingredient-item .inputs {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 10px;
-}
-.ingredient-item .inputs .el-input:last-child {
-  grid-column: 1 / -1;
-}
-
-/* 步骤项特有 */
-.step-item .step-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  width: 30px;
-}
-.step-index {
-  font-weight: bold;
-  font-size: 18px;
-  color: #5d007d;
-}
-.step-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.step-image-uploader {
-  width: 100px;
-  height: 100px;
-  background: #eee;
-  border-radius: 4px;
+.cover-hover-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s;
+  gap: 8px;
+}
+.classic-uploader:hover .cover-hover-mask {
+  opacity: 1;
+}
+
+/* ================= 🌟 重点优化：带边框的高级输入框 ================= */
+:deep(.modern-input .el-input__wrapper),
+:deep(.modern-input .el-textarea__inner) {
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset; /* 明确的默认边框 */
+  background-color: #fafdfb;
+  transition: all 0.2s ease;
+}
+:deep(.modern-input .el-input__wrapper:hover),
+:deep(.modern-input .el-textarea__inner:hover) {
+  box-shadow: 0 0 0 1px #4ea685 inset;
+}
+:deep(.modern-input .el-input__wrapper.is-focus),
+:deep(.modern-input .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 2px #4ea685 inset !important; /* 获得焦点时变粗薄荷绿 */
+  background-color: white;
+}
+/* 标题输入框加粗放大 */
+:deep(.title-input .el-input__inner) {
+  font-size: 20px;
+  font-weight: bold;
+  height: 40px;
+  color: #2c3e50;
+}
+:deep(.desc-input .el-textarea__inner) {
+  font-size: 15px;
+  color: #606266;
+  resize: none;
+}
+/* 给 Form Label 增加高级感 */
+:deep(.el-form-item__label) {
+  font-weight: bold;
+  color: #2c3e50;
+  padding-bottom: 8px;
+}
+
+/* ================= 底部卡片通用 ================= */
+.section-title {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+}
+.w-full {
+  width: 100%;
+}
+.mt-4 {
+  margin-top: 20px;
+}
+.m-0 {
+  margin: 0;
+}
+
+/* ================= 拖拽列表 ================= */
+.content-split {
+  margin-top: 20px;
+}
+.section-header h3 {
+  font-size: 22px;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.modern-list-item {
+  background: white;
+  border: 1px solid #ebeef5;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.modern-list-item:hover {
+  border-color: #d5ebe1;
+  box-shadow: 0 6px 16px rgba(78, 166, 133, 0.08);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #c0c4cc;
+  margin-top: 10px;
+  font-size: 20px;
+}
+
+.item-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+:deep(.ghost-input .el-input__wrapper),
+:deep(.ghost-textarea .el-textarea__inner) {
+  box-shadow: none !important;
+  background: transparent;
+  padding: 4px 8px;
+  transition: background 0.2s;
+}
+:deep(.ghost-input .el-input__wrapper:hover),
+:deep(.ghost-textarea .el-textarea__inner:hover) {
+  background: #f5f7fa;
+}
+:deep(.ghost-input .el-input__wrapper.is-focus),
+:deep(.ghost-textarea .el-textarea__inner:focus) {
+  background: white;
+  box-shadow: 0 0 0 1px #4ea685 inset !important;
+}
+.fw-bold :deep(.el-input__inner) {
+  font-weight: bold;
+  color: #2c3e50;
+}
+.text-small :deep(.el-input__inner) {
+  font-size: 13px;
+  color: #909399;
+}
+
+.delete-btn {
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.modern-list-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  background: #4ea685;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.step-del-btn {
+  margin-top: 0;
+}
+
+.step-image-area {
+  margin-top: 10px;
+  margin-left: 8px;
+}
+.step-uploader {
+  width: 120px;
+  height: 120px;
+}
+.step-img-placeholder {
+  width: 120px;
+  height: 120px;
+  background: #f5f7fa;
+  border: 1px dashed #dcdfe6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
   cursor: pointer;
+  transition: all 0.3s;
+}
+.step-img-placeholder:hover {
+  border-color: #4ea685;
+  color: #4ea685;
+  background: #eef7f4;
+}
+.step-img-placeholder .el-icon {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+.step-img-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 .step-img-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.step-img-placeholder {
-  font-size: 12px;
-  color: #999;
+.img-hover-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.step-img-preview:hover .img-hover-mask {
+  opacity: 1;
 }
 
 .add-btn {
   width: 100%;
-  border-style: dashed;
+  border: none;
+  font-weight: bold;
+  height: 48px;
   margin-top: 10px;
+}
+.add-btn:hover {
+  background: #d5ebe1;
+}
+.mr-1 {
+  margin-right: 5px;
+}
+
+@media (max-width: 992px) {
+  .right-info-col {
+    margin-top: 30px;
+  }
+  .classic-uploader {
+    height: 240px;
+  }
 }
 </style>
