@@ -27,6 +27,6 @@ public class Recipe_Ingredient {
     @Column(nullable = false)
     private String amount;
 
-    @Column(length = 20)
+    @Column(length = 50)
     private String note;
 }

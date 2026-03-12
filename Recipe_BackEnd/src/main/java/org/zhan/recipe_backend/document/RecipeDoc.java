@@ -9,6 +9,7 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -39,24 +40,27 @@ public class RecipeDoc {
     private Double averageRating;
 
     @Field(type = FieldType.Integer)
-    private Double ratingCount;
+    private Integer ratingCount;
     // 用于精确匹配和过滤的标签数组 (Keyword)
     @Field(type = FieldType.Keyword)
     private String difficulty;
 
-    @Field(type = FieldType.Text, analyzer = "english")
+    @Field(type = FieldType.Keyword)
     private List<String> flavours;
 
     @Field(type = FieldType.Keyword)
     private List<String> courses;
 
-    @Field(type = FieldType.Text, analyzer = "english")
+    @Field(type = FieldType.Keyword)
     private List<String> dietTypes;
 
-    @Field(type = FieldType.Text,  analyzer = "english")
+    @Field(type = FieldType.Keyword)
     private List<String> cuisines;
 
     // 🌟 重点：我们只存食材的名字用于搜索，不需要存 amount！
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text,analyzer = "english" )
     private List<String> ingredients;
+
+    @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss||epoch_millis")
+    private LocalDateTime createdAt;
 }
