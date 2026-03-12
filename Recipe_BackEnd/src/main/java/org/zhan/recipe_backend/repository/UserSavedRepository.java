@@ -8,6 +8,9 @@ import org.springframework.data.repository.query.Param;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.UserSavedRecipes;
 
+import java.util.List;
+import java.util.Set;
+
 public interface UserSavedRepository extends JpaRepository<UserSavedRecipes, Long> {
 
     boolean existsByUserIdAndRecipeId(Long userId, Long recipeId);
@@ -20,4 +23,9 @@ public interface UserSavedRepository extends JpaRepository<UserSavedRecipes, Lon
     Slice<Recipe> findSavedRecipesByUserId(@Param("userId") Long userId, Pageable pageable);
 
     int countByUserId(Long currenUserId);
+
+    @Query("select s.recipe.id from UserSavedRecipes  s where s.user.id=:userId ")
+    Set<Long> findRecipeIdsByUserId(@Param("userId")Long currenUserId);
+
+
 }

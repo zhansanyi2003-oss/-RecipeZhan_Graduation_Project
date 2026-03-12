@@ -176,13 +176,9 @@ public class RecipeServiceImpl implements RecipeService {
 
     public void syncToElasticsearch(Recipe recipe) {
         try {
-            // 1. 组装基础属性 (使用 Builder 模式极其清爽)
 
-            // 3. 一键发送给 Elasticsearch 引擎！
             RecipeDoc esDoc = recipeMapper.toRecipeDoc(recipe);
             recipeEsRepository.save(esDoc);
-
-
 
         } catch (Exception e) {
 

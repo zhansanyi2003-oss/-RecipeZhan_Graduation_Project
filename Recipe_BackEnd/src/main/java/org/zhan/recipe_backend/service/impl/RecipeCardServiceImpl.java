@@ -1,18 +1,14 @@
 package org.zhan.recipe_backend.service.impl;
 
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import co.elastic.clients.json.JsonData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.query.Criteria;
-import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+
 import org.springframework.stereotype.Service;
 import org.zhan.recipe_backend.document.RecipeDoc;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
@@ -23,10 +19,12 @@ import org.zhan.recipe_backend.repository.*;
 import org.zhan.recipe_backend.service.RecipeCardService;
 import org.zhan.recipe_backend.service.UserService;
 import org.zhan.recipe_backend.utils.AuthUtils;
-
+import co.elastic.clients.elasticsearch._types.FieldValue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -52,84 +50,107 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private RecipeRepository recipeRepository;
 
-    public Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam,int page, int size) {
+    public Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int size) {
 
-        Pageable pageable = PageRequest.of(page - 1, size);
+        BoolQuery.Builder filterBool = new BoolQuery.Builder();
 
-
-        Criteria criteria = new Criteria(); // 创建一个空的查询条件盒
-
-        // A. 关键字模糊搜索 (搜标题)
-        if (cardParam.getTitle() != null && !cardParam.getTitle() .trim().isEmpty()) {
-            criteria.and(new Criteria("title").contains(cardParam.getTitle() ));
+        // 1. Keyword search -> Must context (calculates relevance score)
+        if (cardParam.getTitle() != null && !cardParam.getTitle().trim().isEmpty()) {
+            filterBool.must(m -> m.match(t -> t.field("title").query(cardParam.getTitle().trim())));
         }
 
-        // B. 数组精确筛选：只要包含这些口味中的任意一个即可 (IN 查询)
         if (cardParam.getFlavours() != null && !cardParam.getFlavours().isEmpty()) {
-            criteria.and(new Criteria("flavours").in(cardParam.getFlavours()));
+            filterBool.filter(f -> f.terms(t -> t.field("flavours").terms(v -> v.value(
+                    cardParam.getFlavours().stream()
+                            .map(FieldValue::of) // ✨ Look how clean this is now!
+                            .collect(Collectors.toList())
+            ))));
         }
 
         if (cardParam.getCuisines() != null && !cardParam.getCuisines().isEmpty()) {
-            criteria.and(new Criteria("cuisines").in(cardParam.getCuisines()));
+            filterBool.filter(f -> f.terms(t -> t.field("cuisines").terms(v -> v.value(
+                    cardParam.getCuisines().stream()
+                            .map(FieldValue::of)
+                            .collect(Collectors.toList())
+            ))));
         }
+
         if (cardParam.getDietTypes() != null && !cardParam.getDietTypes().isEmpty()) {
-            criteria.and(new Criteria("dietTypes").in(cardParam.getDietTypes()));
+            filterBool.filter(f -> f.terms(t -> t.field("dietTypes").terms(v -> v.value(
+                    cardParam.getDietTypes().stream()
+                            .map(FieldValue::of)
+                            .collect(Collectors.toList())
+            ))));
         }
         if (cardParam.getCourses() != null && !cardParam.getCourses().isEmpty()) {
-            criteria.and(new Criteria("courses").in(cardParam.getCourses()));
+
+            filterBool.filter(f -> f.terms(t -> t.field("courses").terms(v -> v.value(
+                    cardParam.getCourses().stream()
+                            .map(FieldValue::of)
+                            .collect(Collectors.toList())
+            ))));
+
         }
 
-        // C. 范围筛选：烹饪时间 (大于等于 min, 小于等于 max)
+        // 3. Range queries -> Filter context
         if (cardParam.getMinTime() != null) {
-            criteria.and(new Criteria("cookingTimeMin").greaterThanEqual(cardParam.getMinTime()));
+            filterBool.filter(f -> f.range(r -> r.field("cookingTimeMin").gte(co.elastic.clients.json.JsonData.of(cardParam.getMinTime()))));
         }
         if (cardParam.getMaxTime() != null) {
-            criteria.and(new Criteria("cookingTimeMin").lessThanEqual(cardParam.getMaxTime()));
-        }
-        if(cardParam.getIngredientTags()!=null && !cardParam.getIngredientTags().isEmpty()) {
-            criteria.and(new Criteria("ingredients").in(cardParam.getIngredientTags()));
+            filterBool.filter(f -> f.range(r -> r.field("cookingTimeMin").lte(co.elastic.clients.json.JsonData.of(cardParam.getMaxTime()))));
         }
 
-        // ==========================================
-        // 2. 组装并发送给 Elasticsearch 执行
-        // ==========================================
-        CriteriaQuery query = new CriteriaQuery(criteria);
-        query.setPageable(pageable); // 把分页参数塞进去
-
-        // 🌟 见证奇迹的时刻：执行动态查询！
-        SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(query, RecipeDoc.class);
-
-        // ==========================================
-        // 3. 结果提取与“动态缝合” (结合 MapStruct 与 PG)
-        // ==========================================
-        // 注意：ES 返回的是 SearchHits，我们需要把里面的 content 提取出来
-        List<RecipeCardDto> cardDtoList=DocToDto(searchHits);
+        // 4. Ingredients -> Must be Match query because it's a Text field, NOT Keyword!
+        if (cardParam.getIngredientTags() != null && !cardParam.getIngredientTags().isEmpty()) {
+            // If we want the recipe to contain AT LEAST ONE of the selected ingredients:
+            BoolQuery.Builder ingredientsBool = new BoolQuery.Builder();
+            for (String ingredient : cardParam.getIngredientTags()) {
+                ingredientsBool.should(s -> s.match(m -> m.field("ingredients").query(ingredient)));
+            }
+            // Add it to the main filter context
+            filterBool.filter(f -> f.bool(ingredientsBool.build()));
+        }
 
         // ==========================================
-        // 4. 打包成 Slice 返回前端
+        // Build and execute the NativeQuery
         // ==========================================
-        // 判断是否还有下一页：如果查出来的数量 == 你要求的一页的数量，通常说明可能还有下一页
+        Query q = Query.of(b -> b.bool(filterBool.build()));
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        NativeQuery nativeQuery = NativeQuery.builder()
+                .withQuery(q)
+                .withPageable(pageable)
+                // Optional: Add sorting by ID descending (newest first) if no keyword search is provided
+                // .withSort(Sort.by(Sort.Direction.DESC, "id"))
+                .build();
+
+        SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);
+
+        // Map results to DTO
+        List<RecipeCardDto> cardDtoList = DocToDto(searchHits);
+
+        // Check for next page
         boolean hasNext = cardDtoList.size() == pageable.getPageSize();
         return new SliceImpl<>(cardDtoList, pageable, hasNext);
-
-
     }
 
     private List<RecipeCardDto>  DocToDto( SearchHits<RecipeDoc> searchHits)
     {
         Long currentUserId=AuthUtils.getCurrentUserIdOrNull();
+        Set<Long> userSavedRecipeIds = (currentUserId != null)
+                ? userSavedRepository.findRecipeIdsByUserId(currentUserId)
+                : Collections.emptySet();
+
       return searchHits.getSearchHits().stream()
                 .map(SearchHit::getContent) // 剥开 ES 的外壳，拿到 RecipeDoc
                 .map(doc -> {
                     // a. MapStruct 极速转换
                     RecipeCardDto dto = recipeMapper.docToCardDto(doc);
-                    // b. 去 PostgreSQL 查私有状态
-                    if (currentUserId != null) {
-                        dto.setIsLiked(userSavedRepository.existsByUserIdAndRecipeId(currentUserId, doc.getId()));
-                    } else {
-                        dto.setIsLiked(false);
-                    }
+                    dto.setIsLiked(userSavedRecipeIds.contains(doc.getId()));
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -169,7 +190,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             // 1. 饮食限制 (Dietary) -> 必须全部包含 (Must / Filter)
             if (!prefs.getDietary().isEmpty()) {
                 for (String diet : prefs.getDietary()) {
-                    boolBuilder.filter(f -> f.match(t -> t.field("dietTypes").query(diet)));
+                    boolBuilder.filter(f -> f.term(t -> t.field("dietTypes").value(diet)));
                 }
             }
 
@@ -253,23 +274,59 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             }
 
             scoreFunctions.add(FunctionScore.of(fs -> fs
+                    .fieldValueFactor(fvf -> fvf
+                            .field("averageRating")
+                            .factor(1.2)
+                            .missing(3.0) // 假设没有评分的菜谱默认为 3.0 分
+                            .modifier(FieldValueFactorModifier.Log1p)
+                    )
+            ));
 
-                    .randomScore(rs -> rs.seed(String.valueOf(System.currentTimeMillis())).field("_seq_no"))
+            // Rating Count (评价人数越多证明越火，使用 Log2p 防止绝对碾压)
+            scoreFunctions.add(FunctionScore.of(fs -> fs
+                    .fieldValueFactor(fvf -> fvf
+                            .field("ratingCount")
+                            .factor(0.5)
+                            .missing(0.0)
+                            .modifier(FieldValueFactorModifier.Log2p)
+                    )
+            ));
+
+            // ==========================================
+            // 🌟 C. Content Ecology & Freshness (内容生态与时间高斯衰减) - [你要求加的部分]
+            // ==========================================
+            scoreFunctions.add(FunctionScore.of(fs -> fs
+                    .gauss(g -> g
+                            .field("createdAt")
+                            .placement(p -> p
+                                    .origin(JsonData.of("now"))
+                                    .scale(JsonData.of("30d")) // 30天后分数减半
+                                    .offset(JsonData.of("7d")) // 7天新菜谱保护期
+                                    .decay(0.5)
+                            )
+                    )
+            ));
+            String seed = currentUserId + "-" + java.time.LocalDate.now();
+            scoreFunctions.add(FunctionScore.of(fs -> fs
+
+                    .randomScore(rs -> rs.seed(seed).field("_seq_no"))
                     .weight(1.2) // 给一个 1.2 的微小权重，不会完全颠覆推荐，但足以让列表产生“呼吸感”
             ));
+
+
 
             // 把底层的 baseQuery 和 加分逻辑 scoreFunctions 组合起来
             Query finalQuery = Query.of(q -> q.functionScore(fsq -> fsq
                     .query(baseQuery)
                     .functions(scoreFunctions)
-                    .scoreMode(FunctionScoreMode.Multiply) // 多个加分项采用乘法叠加
+                    .scoreMode(FunctionScoreMode.Sum) // 多个加分项采用乘法叠加
                     .boostMode(FunctionBoostMode.Multiply) // 最终得分 = 基础得分 * 加权得分
             ));
 
             // 使用 NativeQuery 发送给 ES
             NativeQuery nativeQuery = NativeQuery.builder()
                     .withQuery(finalQuery)
-                    .withMaxResults(5) // 每次推荐 20 道菜
+                    .withMaxResults(5)
                     .build();
 
             SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);

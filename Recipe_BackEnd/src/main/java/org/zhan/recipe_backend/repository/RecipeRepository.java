@@ -27,5 +27,4 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     int countByAuthorId(Long authorId);
 
 
-
 }
