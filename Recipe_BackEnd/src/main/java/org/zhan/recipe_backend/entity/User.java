@@ -7,7 +7,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.zhan.recipe_backend.common.RoleEnum;
+import org.zhan.recipe_backend.dto.UserPreferenceDto;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -48,6 +51,10 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private RoleEnum role;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private UserPreferenceDto preferences;
 
 
 

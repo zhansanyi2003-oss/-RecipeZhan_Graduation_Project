@@ -28,7 +28,7 @@ public class Recipe {
 
     // 这里可以改成 @ManyToOne 关联 User 实体，为了直观先用 Long
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id") // 告诉数据库，用 author_id 这个字段作为外键去连 users 表
+    @JoinColumn(name = "author_id")
     private User author;
 
     @Column(nullable = false, length = 100)
@@ -52,13 +52,21 @@ public class Recipe {
     private List<RecipeStep> steps;
 
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Recipe_Ingredient> ingredientsList;
+    private List<Recipe_Ingredient> recipeIngredients;
 
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Builder.Default
     private List<Recipe_Course> recipeCourses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Recipe_DietType> recipeDietTypes = new ArrayList<>();
+
+
 
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude

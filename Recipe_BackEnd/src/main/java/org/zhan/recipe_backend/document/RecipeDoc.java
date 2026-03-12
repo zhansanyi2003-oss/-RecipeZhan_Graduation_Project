@@ -38,6 +38,8 @@ public class RecipeDoc {
     @Field(type = FieldType.Double)
     private Double averageRating;
 
+    @Field(type = FieldType.Integer)
+    private Double ratingCount;
     // 用于精确匹配和过滤的标签数组 (Keyword)
     @Field(type = FieldType.Keyword)
     private String difficulty;
@@ -47,6 +49,9 @@ public class RecipeDoc {
 
     @Field(type = FieldType.Keyword)
     private List<String> courses;
+
+    @Field(type = FieldType.Text, analyzer = "english")
+    private List<String> dietTypes;
 
     @Field(type = FieldType.Text,  analyzer = "english")
     private List<String> cuisines;

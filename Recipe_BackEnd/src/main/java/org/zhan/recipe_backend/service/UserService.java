@@ -1,10 +1,7 @@
 package org.zhan.recipe_backend.service;
 
 import org.springframework.data.domain.Slice;
-import org.zhan.recipe_backend.dto.RecipeCardDto;
-import org.zhan.recipe_backend.dto.UserDto;
-import org.zhan.recipe_backend.dto.UserLoginDto;
-import org.zhan.recipe_backend.dto.UserSingUpDto;
+import org.zhan.recipe_backend.dto.*;
 import org.zhan.recipe_backend.entity.User;
 
 import java.util.List;
@@ -28,4 +25,6 @@ public interface UserService {
      void updateAvatar(String newAvatarUrl);
 
      void deleteAvatar();
+     UserPreferenceDto getUserPreferences();
+     void updateUserPreferences(UserPreferenceDto preferences);
 }

@@ -20,10 +20,11 @@ public class RecipeDetailDto {
     private List<String> flavours;
     private List<String> courses;
     private List<String> cuisines;
+    private List<String>  dietTypes;
     private Double averageRating ;
     private Integer ratingCount;
     private Double userScore;
     private Boolean isLiked;
-    private List<IngredientDto> ingredientsList;
+    private List<IngredientDto> ingredients;
     private List<RecipeStepDto> steps;
 }

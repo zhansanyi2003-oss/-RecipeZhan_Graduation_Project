@@ -54,8 +54,8 @@ public  class ConvertUtils {
                         .collect(Collectors.toList());
                 dto.setCuisines(cuisineNames);
             }
-            if (recipe.getIngredientsList() != null) {
-                List<String> ingredientNames = recipe.getIngredientsList().stream()
+            if (recipe.getRecipeIngredients() != null) {
+                List<String> ingredientNames = recipe.getRecipeIngredients().stream()
                         .map(ri -> ri.getIngredient().getName())
                         .collect(Collectors.toList());
                 dto.setIngredientTags(ingredientNames);

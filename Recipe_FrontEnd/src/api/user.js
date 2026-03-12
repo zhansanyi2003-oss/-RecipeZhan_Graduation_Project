@@ -5,7 +5,7 @@ export const getMyRecipeApi = () => {
 }
 
 export const getSavedRecipeApi = (page, size) => {
-  return request.get(`/users/saved?page=${page.value}&pageSize=${size.value}`)
+  return request.get(`/users/saved?page=${page}&pageSize=${size}`)
 }
 
 export const sumbmitSaveRecipeApi = (id, status) => {
@@ -18,4 +18,12 @@ export const getUserInfoApi = () => {
 
 export const deleteAvatarApi = () => {
   return request.delete(`/users/avatar`)
+}
+
+export const updatePreferenceApi = (data) => {
+  return request.post('/users/preference', data)
+}
+
+export const getPreferenceApi = () => {
+  return request.get('/users/preference')
 }

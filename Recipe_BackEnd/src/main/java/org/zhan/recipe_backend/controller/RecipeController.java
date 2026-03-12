@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.zhan.recipe_backend.common.Result;
-import org.zhan.recipe_backend.dto.RatingRequestDTO;
+import org.zhan.recipe_backend.dto.RatingRequestDto;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
 import org.zhan.recipe_backend.service.RecipeCardService;
@@ -48,6 +48,11 @@ public class RecipeController {
 
         return Result.Success(recipeCardService.getCuisines());
     }
+    @GetMapping("/ingredients")
+    public Result getIngredients() {
+
+        return Result.Success(recipeCardService.getIngredients());
+    }
 
     @GetMapping("/{id}")
     public Result getRecipeDetails(@PathVariable Long id) {
@@ -56,14 +61,19 @@ public class RecipeController {
 
     }
 
+
+    @GetMapping("/recc")
+    public Result getRecipeDetails(@RequestParam Integer localHour) {
+        return Result.Success(recipeCardService.getPersonalizedRecommendations(localHour));
+
+    }
+
+
     @DeleteMapping("/rate")
     public Result deleteRecipe(@RequestParam("id") Long id) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         newStats=ratingService.deleteRating(id,userId);
-        return  Result.Success(newStats
-
-
-        );
+        return  Result.Success(newStats);
     }
 
     @PostMapping("/create")
@@ -73,7 +83,7 @@ public class RecipeController {
         return  Result.Success();
     }
     @PostMapping("/rate")
-    public Result submitRating(@RequestBody RatingRequestDTO dto) {
+    public Result submitRating(@RequestBody RatingRequestDto dto) {
 
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 

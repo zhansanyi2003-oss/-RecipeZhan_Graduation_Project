@@ -1,48 +1,17 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 // 假设你之前写好的食谱卡片组件在这里引入
+
+import { getCarouselCardApi } from '../../api/recipeCard'
 import RecipeCard from '../../component/recipeCard.vue'
 
 const router = useRouter()
 const searchKeyword = ref('')
 
 // 1. 模拟：每日推荐数据 (大图走马灯用)
-const recommendedRecipes = ref([
-  {
-    id: 1,
-    title: 'Avocado Toast with Egg',
-    image:
-      'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=800&q=80',
-    time: '10 min',
-    rating: 4.9,
-  },
-  {
-    id: 2,
-    title: 'Classic Beef Wellington',
-    image:
-      'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80',
-    time: '60 min',
-    rating: 5.0,
-  },
-  {
-    id: 3,
-    title: 'Healthy Salmon Salad',
-    image:
-      'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
-    time: '20 min',
-    rating: 4.8,
-  },
-  {
-    id: 4,
-    title: 'Creamy Mushroom Pasta',
-    image:
-      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=800&q=80',
-    time: '30 min',
-    rating: 4.7,
-  },
-])
+const recommendedRecipes = ref([])
 
 // 2. 模拟：最新发布的普通食谱 (可以复用你的 RecipeCard)
 // 这里随便塞几条假数据占位，后期接后端接口
@@ -62,6 +31,16 @@ const handleHeroSearch = () => {
     router.push('/recipe')
   }
 }
+
+const getCarouselCard = async () => {
+  const result = await getCarouselCardApi()
+  if (result.code) {
+    recommendedRecipes.value = result.data
+  }
+}
+onMounted(() => {
+  getCarouselCard()
+})
 </script>
 
 <template>
@@ -104,13 +83,17 @@ const handleHeroSearch = () => {
 
         <el-carousel :interval="4000" type="card" height="340px" class="custom-carousel">
           <el-carousel-item v-for="item in recommendedRecipes" :key="item.id">
-            <div class="carousel-card" :style="{ backgroundImage: `url(${item.image})` }">
+            <div
+              class="carousel-card"
+              :style="{ backgroundImage: `url(${item.coverImage})` }"
+              @click="router.push(`/recipe/${item.id}`)"
+            >
               <div class="card-gradient-overlay"></div>
               <div class="card-info">
                 <h3>{{ item.title }}</h3>
                 <div class="card-meta">
-                  <span class="rating">⭐ {{ item.rating }}</span>
-                  <span class="time">⏱️ {{ item.time }}</span>
+                  <span class="rating">⭐ {{ item.averageRating }}</span>
+                  <span class="time">⏱️ {{ item.cookingTimeMin }}</span>
                 </div>
               </div>
             </div>

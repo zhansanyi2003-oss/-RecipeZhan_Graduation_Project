@@ -13,10 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.common.RoleEnum;
-import org.zhan.recipe_backend.dto.RecipeCardDto;
-import org.zhan.recipe_backend.dto.UserDto;
-import org.zhan.recipe_backend.dto.UserLoginDto;
-import org.zhan.recipe_backend.dto.UserSingUpDto;
+import org.zhan.recipe_backend.dto.*;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.User;
 import org.zhan.recipe_backend.entity.UserSavedRecipes;
@@ -112,6 +109,27 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
 
     }
+
+    @Transactional
+    public void updateUserPreferences(UserPreferenceDto preferences) {
+        Long userId = AuthUtils.getCurrentUserIdOrNull();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setPreferences(preferences); // 存入 JSON
+        userRepository.save(user);
+    }
+
+    public UserPreferenceDto getUserPreferences() {
+        Long userId = AuthUtils.getCurrentUserIdOrNull();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+
+        return user.getPreferences() != null ? user.getPreferences() : new UserPreferenceDto();
+    }
+
+
 
     @Transactional
     @Override

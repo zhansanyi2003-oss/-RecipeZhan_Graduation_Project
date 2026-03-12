@@ -4,11 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.entity.Recipe;
-import org.zhan.recipe_backend.entity.RecipeRating;
+import org.zhan.recipe_backend.entity.Recipe_Rating;
 import org.zhan.recipe_backend.repository.RatingRepository;
-import org.zhan.recipe_backend.repository.RecipeEsRepository;
 import org.zhan.recipe_backend.repository.RecipeRepository;
-import org.zhan.recipe_backend.service.RecipeCardService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,14 +27,14 @@ public class RatingServiceImpl {
     @Transactional // 🌟 必须加事务，保证两张表同时成功或同时失败
     public  Map<String, Object> submitRating(Long recipeId, Long userId, Double score) {
         // 1. 查找用户是否已经评过分
-        Optional<RecipeRating> existingRating = ratingRepository.findByUserIdAndRecipeId(userId, recipeId);
+        Optional<Recipe_Rating> existingRating = ratingRepository.findByUserIdAndRecipeId(userId, recipeId);
 
-        RecipeRating rating;
+        Recipe_Rating rating;
         if (existingRating.isPresent()) {
             rating = existingRating.get();
             rating.setScore(score); // 更新分数
         } else {
-            rating = new RecipeRating();
+            rating = new Recipe_Rating();
             rating.setUserId(userId);
             rating.setRecipeId(recipeId);
             rating.setScore(score); // 插入新分数
@@ -55,6 +53,7 @@ public class RatingServiceImpl {
         recipe.setAverageRating(formattedAvg);
         recipe.setRatingCount(newCount);
         recipeRepository.save(recipe);
+        recipeService.syncToElasticsearch(recipe);
 
         Map<String, Object> result = new HashMap<>();
         result.put("newAverageRating", formattedAvg);
@@ -64,7 +63,7 @@ public class RatingServiceImpl {
 
     @Transactional
     public Map<String, Object> deleteRating(Long id, Long userId) {
-        RecipeRating existingRating = ratingRepository.findByUserIdAndRecipeId(id, userId)
+        Recipe_Rating existingRating = ratingRepository.findByUserIdAndRecipeId(userId, id)
                 .orElseThrow(() -> new RuntimeException("您还未对该食谱打分，无法取消！"));
         ratingRepository.delete(existingRating);
         ratingRepository.flush();

@@ -50,7 +50,6 @@ const handleRateChange = async (newScore) => {
 
   if (newScore === 0) {
     res = await deleteRatingApi(recipe.value.id)
-    console.log('ahahahha' + newScore)
     if (res.code) {
       ElMessage.success('You successfully delete the rating')
       recipe.value.averageRating = res.data.newAverageRating
@@ -183,7 +182,7 @@ onMounted(() => {
         <div class="ingredients-panel">
           <h2 class="section-title">Ingredients</h2>
           <ul class="ingredient-list">
-            <li v-for="(item, index) in recipe.ingredientsList" :key="index">
+            <li v-for="(item, index) in recipe.ingredients" :key="index">
               <div class="ing-main">
                 <span class="ing-name"><span class="dot"></span> {{ item.name }}</span>
                 <span class="ing-amount">{{ item.amount }}</span>
