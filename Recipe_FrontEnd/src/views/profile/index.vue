@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { Edit, Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import RecipeCard from '../../component/recipeCard.vue'
+import RecipeSliceList from '../../component/RecipeSliceList.vue'
 
 import {
   getMyRecipeApi,
@@ -27,8 +28,11 @@ const userInfo = ref({
   savedCount: null,
 })
 
-const myRecipeList = ref([])
 const router = useRouter()
+const myRecipeSliceRef = ref()
+const savedRecipeSliceRef = ref()
+const myRecipeCount = ref(0)
+const myRecipeHasNext = ref(true)
 
 const userInitial = computed(() => {
   return userInfo.value.username ? userInfo.value.username.charAt(0).toUpperCase() : ''
@@ -130,11 +134,8 @@ const getUserInfo = async () => {
     userInfo.value = result.data
   }
 }
-const getMyrecipe = async () => {
-  const result = await getMyRecipeApi()
-  if (result.code) {
-    myRecipeList.value = result.data
-  }
+const fetchMyRecipesPage = async (page, pageSize) => {
+  return await getMyRecipeApi(page, pageSize)
 }
 
 const removeAvatar = async () => {
@@ -147,47 +148,22 @@ const uploadHeaders = computed(() => {
   return token ? { Authorization: JSON.parse(token).Authorization } : {}
 })
 
-const savedRecipeList = ref([])
-const savedPage = ref(1)
-const savedPageSize = ref(12)
-const hasMoreSaved = ref(true)
-const loadingSaved = ref(false)
-
-const fetchSavedRecipes = async () => {
-  if (loadingSaved.value || !hasMoreSaved.value) return
-
-  loadingSaved.value = true
-  try {
-    const result = await getSavedRecipeApi(savedPage.value, savedPageSize.value)
-    if (result.code) {
-      const sliceData = result.data
-      if (sliceData && sliceData.content) {
-        savedRecipeList.value.push(...sliceData.content)
-      }
-      hasMoreSaved.value = !sliceData.last
-      savedPage.value++
-    }
-  } catch (error) {
-    console.error(error)
-  } finally {
-    loadingSaved.value = false
-  }
+const fetchSavedRecipesPage = async (page, pageSize) => {
+  return await getSavedRecipeApi(page, pageSize)
 }
 
 const handleLikeToggled = (recipeId, newStatus) => {
   if (!newStatus) {
-    savedRecipeList.value = savedRecipeList.value.filter((recipe) => recipe.id !== recipeId)
+    savedRecipeSliceRef.value?.removeItemById(recipeId)
   }
 }
 
 const handleTabChange = (tabName) => {
   if (tabName === 'myRecipes') {
-    getMyrecipe()
+    myRecipeHasNext.value = true
+    myRecipeSliceRef.value?.refresh()
   } else if (tabName === 'savedRecipes') {
-    savedRecipeList.value = []
-    savedPage.value = 1
-    hasMoreSaved.value = true
-    fetchSavedRecipes()
+    savedRecipeSliceRef.value?.refresh()
   } else {
     fetchUserPreferences()
     getFlavours()
@@ -196,8 +172,19 @@ const handleTabChange = (tabName) => {
   }
 }
 
+const goToEditRecipe = (id) => {
+  router.push(`/recipe/edit/${id}`)
+}
+
+const handleMyRecipesItemsChange = (items) => {
+  myRecipeCount.value = items.length
+}
+
+const handleMyRecipesStateChange = (state) => {
+  myRecipeHasNext.value = Boolean(state?.hasNext)
+}
+
 onMounted(() => {
-  getMyrecipe()
   getUserInfo()
 })
 </script>
@@ -263,68 +250,71 @@ onMounted(() => {
     <div class="profile-content">
       <el-tabs v-model="activeTab" class="modern-tabs" @tab-change="handleTabChange">
         <el-tab-pane label="My Recipes" name="myRecipes">
-          <el-row :gutter="24" class="recipe-grid">
-            <template v-if="myRecipeList.length > 0">
+          <RecipeSliceList
+            ref="myRecipeSliceRef"
+            :fetch-page="fetchMyRecipesPage"
+            :enabled="activeTab === 'myRecipes'"
+            :show-empty="false"
+            :show-no-more-text="false"
+            :xl="6"
+            class="profile-recipe-grid"
+            @items-change="handleMyRecipesItemsChange"
+            @state-change="handleMyRecipesStateChange"
+          >
+            <template #item="{ recipe, onLikeToggled }">
+              <div class="my-recipe-item">
+                <RecipeCard :data="recipe" @like-toggled="onLikeToggled" />
+                <el-button class="edit-recipe-btn" round @click="goToEditRecipe(recipe.id)">
+                  Edit Recipe
+                </el-button>
+              </div>
+            </template>
+            <template #after>
               <el-col
-                v-for="recipe in myRecipeList"
-                :key="recipe.id"
+                v-if="!myRecipeHasNext"
                 :xs="24"
                 :sm="12"
                 :md="8"
                 :lg="6"
+                :xl="6"
+                class="create-recipe-col"
+                :class="{ 'only-create-col': myRecipeCount === 0 }"
               >
-                <RecipeCard :data="recipe" @like-toggled="handleLikeToggled" />
+                <div class="create-recipe-item">
+                  <div class="create-new-card" @click="router.push('/recipe/create')">
+                    <el-icon :size="40" color="#4ea685"><Plus /></el-icon>
+                    <span>Create New Recipe</span>
+                  </div>
+                  <el-button class="edit-recipe-btn create-card-spacer" round aria-hidden="true">
+                    Edit Recipe
+                  </el-button>
+                </div>
               </el-col>
             </template>
-
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <div class="create-new-card" @click="router.push('/recipe/create')">
-                <el-icon :size="40" color="#4ea685"><Plus /></el-icon>
-                <span>Create New Recipe</span>
-              </div>
-            </el-col>
-          </el-row>
+          </RecipeSliceList>
         </el-tab-pane>
 
         <el-tab-pane label="Saved Recipes" name="savedRecipes">
-          <div class="saved-recipes-wrapper" v-loading="loadingSaved && savedPage === 1">
-            <el-row :gutter="24" class="recipe-grid">
-              <template v-if="savedRecipeList.length > 0">
-                <el-col
-                  v-for="recipe in savedRecipeList"
-                  :key="recipe.id"
-                  :xs="24"
-                  :sm="12"
-                  :md="8"
-                  :lg="6"
-                >
-                  <RecipeCard :data="recipe" @like-toggled="handleLikeToggled" />
-                </el-col>
-              </template>
-
-              <div v-else-if="!loadingSaved" class="empty-state-container">
+          <RecipeSliceList
+            ref="savedRecipeSliceRef"
+            :fetch-page="fetchSavedRecipesPage"
+            :enabled="activeTab === 'savedRecipes'"
+            :xl="6"
+            class="profile-recipe-grid"
+            :load-more-text="'Load More Recipes'"
+            :no-more-text="'—— No more saved recipes ——'"
+            @like-toggled="handleLikeToggled"
+          >
+            <template #empty>
+              <div class="empty-state-container">
                 <el-empty description="You haven't saved any recipes yet 🥺" image-size="200">
                   <el-button type="primary" @click="router.push('/recipe')">
                     Go Explore Recipes
                   </el-button>
                 </el-empty>
               </div>
-            </el-row>
-
-            <div v-if="savedRecipeList.length > 0" class="pagination-footer">
-              <el-button
-                v-if="hasMoreSaved"
-                @click="fetchSavedRecipes"
-                :loading="loadingSaved"
-                round
-                class="load-more-btn"
-              >
-                Load More Recipes
-              </el-button>
-
-              <p v-else class="no-more-text">—— No more saved recipes ——</p>
-            </div>
-          </div>
+            </template>
+          </RecipeSliceList>
         </el-tab-pane>
 
         <el-tab-pane label="Taste Preferences" name="preferences">
@@ -580,21 +570,59 @@ onMounted(() => {
 }
 
 /* ================= Tab 1 & 2: Recipes Grid ================= */
-.recipe-grid {
+.profile-recipe-grid {
   margin-top: 20px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
 }
 
-.recipe-grid > .el-col {
+:deep(.profile-recipe-grid .el-row > .el-col) {
   display: flex;
   margin-bottom: 24px;
+}
+
+:deep(.profile-recipe-grid .el-row > .el-col > *) {
+  width: 100%;
+}
+
+.my-recipe-item {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+:deep(.my-recipe-item .modern-card) {
+  flex: 1;
+}
+
+.edit-recipe-btn {
+  border-color: #d5ebe1;
+  color: #4ea685;
+  font-weight: 600;
+}
+
+.edit-recipe-btn:hover {
+  background-color: #eef7f4;
+  border-color: #4ea685;
+}
+
+.create-recipe-item {
+  width: 100%;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.create-recipe-col.only-create-col {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .create-new-card {
   flex: 1;
   width: 100%;
+  height: 100%;
   border: 2px dashed #d5ebe1;
   border-radius: 16px;
   display: flex;
@@ -614,6 +642,11 @@ onMounted(() => {
   background-color: #eef7f4;
   border-color: #4ea685;
   transform: translateY(-4px);
+}
+
+.create-card-spacer {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .empty-state-container {
@@ -792,6 +825,10 @@ onMounted(() => {
   }
   .preferences-panel {
     padding: 20px;
+  }
+  .create-recipe-col.only-create-col {
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 </style>

@@ -40,8 +40,15 @@ const routes = [
       },
       {
         path: '/recipe/create',
-        name: RecipeCreateView,
+        name: 'RecipeCreate',
         component: RecipeCreateView,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/recipe/edit/:id',
+        name: 'RecipeEdit',
+        component: RecipeCreateView,
+        props: true,
         meta: { requiresAuth: true },
       },
     ],

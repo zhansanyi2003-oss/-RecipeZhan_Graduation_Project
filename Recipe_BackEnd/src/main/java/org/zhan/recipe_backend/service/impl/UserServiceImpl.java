@@ -17,6 +17,7 @@ import org.zhan.recipe_backend.dto.*;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.User;
 import org.zhan.recipe_backend.entity.UserSavedRecipes;
+import org.zhan.recipe_backend.mapper.RecipeMapper;
 import org.zhan.recipe_backend.mapper.UserMapper;
 import org.zhan.recipe_backend.repository.RecipeRepository;
 import org.zhan.recipe_backend.repository.UserRepository;
@@ -28,8 +29,10 @@ import org.zhan.recipe_backend.utils.ConvertUtils;
 import org.zhan.recipe_backend.utils.JwtUtils;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,6 +56,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserSavedRepository userSavedRepository;
+
+    @Autowired
+    private RecipeMapper recipeMapper;
 
     @Autowired
     private UserMapper userMapper;
@@ -90,24 +96,33 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<RecipeCardDto> getMyRecipe() {
-        Long userId =AuthUtils.getCurrentUserIdOrNull();
-
-        List<Recipe> recipes= recipeRepository.findByAuthorIdOrderByCreatedAtDesc(AuthUtils.getCurrentUserIdOrNull());
-        return recipes.stream()
-                .map(recipe -> {
-                    // 先做纯粹的数据类型转换
-                    RecipeCardDto dto = ConvertUtils.convertToCardDto(recipe);
-
-                    // 如果用户已登录，在 Service 层判断是否收藏
-                    if (userId != null) {
-                        boolean isSaved = userSavedRepository.existsByUserIdAndRecipeId(userId, recipe.getId());
-                        dto.setIsLiked(isSaved);
-                    }
+    public Slice<RecipeCardDto> getMyRecipe(Integer page,Integer pageSize) {
+        Long currentUserId =AuthUtils.getCurrentUserIdOrNull();
+        Set<Long> userSavedRecipeIds = userSavedRepository.findRecipeIdsByUserId(currentUserId);
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Slice<Recipe> recipes= recipeRepository.findByAuthorIdOrderByCreatedAtDesc(AuthUtils.getCurrentUserIdOrNull(),pageable);
+        return recipes
+                .map(recipe -> {// 先做纯粹的数据类型转换
+                    RecipeCardDto dto = recipeMapper.toCardDto(recipe);
+                    dto.setIsLiked(userSavedRecipeIds.contains(dto.getId()));
                     return dto;
-                })
-                .collect(Collectors.toList());
+                });
 
+    }
+
+
+    @Override
+    public Slice<RecipeCardDto> getSavedRecipe(Integer page,Integer pageSize) {
+
+
+        Long userId=(Long) AuthUtils.getCurrentUserIdOrNull();
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Slice<Recipe> recipeSlice= userSavedRepository.findSavedRecipesByUserId(userId,pageable);
+        return recipeSlice.map(recipe -> {
+            RecipeCardDto dto = recipeMapper.toCardDto(recipe);
+            dto.setIsLiked(true);
+            return dto;
+        });
     }
 
     @Transactional
@@ -155,20 +170,7 @@ public class UserServiceImpl implements UserService {
 
     }
 
-    @Override
-    public Slice<RecipeCardDto> getSavedRecipe(Integer page,Integer pageSize) {
 
-        int pageIndex = (page != null && page > 0) ? (page - 1) : 0;
-        int size = (pageSize != null && pageSize > 0) ? pageSize : 12;
-        Long userId=(Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Pageable pageable = PageRequest.of(pageIndex, size);
-        Slice<Recipe> recipeSlice= userSavedRepository.findSavedRecipesByUserId(userId,pageable);
-        return recipeSlice.map(recipe -> {
-            RecipeCardDto dto = ConvertUtils.convertToCardDto(recipe);
-            dto.setIsLiked(true);
-            return dto;
-        });
-    }
 
     @Override
     public UserDto getUserById() {

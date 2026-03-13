@@ -6,7 +6,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { UserFilled, SwitchButton, EditPen } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const route = useRoute() 
+const route = useRoute()
 
 const userInfo = ref({ name: 'Visitor', isLoggedIn: false })
 
@@ -107,9 +107,6 @@ watch(
                   <el-dropdown-menu class="custom-dropdown">
                     <el-dropdown-item @click="router.push('/profile')">
                       <el-icon><User /></el-icon> My Profile
-                    </el-dropdown-item>
-                    <el-dropdown-item>
-                      <el-icon><Setting /></el-icon> Preferences
                     </el-dropdown-item>
                     <el-dropdown-item divided @click="handleLogout" class="logout-item">
                       <el-icon><SwitchButton /></el-icon> Log Out

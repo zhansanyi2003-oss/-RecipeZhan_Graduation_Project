@@ -14,7 +14,7 @@ public interface UserService {
 
      String loginUser(UserLoginDto user);
 
-     List<RecipeCardDto> getMyRecipe();
+     Slice<RecipeCardDto> getMyRecipe(Integer page,Integer pageSize);
 
      Boolean toggleSaveRecipe(Long recipeId, Boolean status);
 
