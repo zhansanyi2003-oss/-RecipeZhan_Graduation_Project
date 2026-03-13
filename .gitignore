@@ -8,16 +8,13 @@
 postgres-data/
 
 # --- 后端 (Spring Boot / Maven) ---
-Recipe-BackEnd/target/
-Recipe-BackEnd/*.iml
-Recipe-BackEnd/.mvn/
-Recipe-BackEnd/mvnw
-Recipe-BackEnd/mvnw.cmd
+Recipe_BackEnd/target/
+Recipe_BackEnd/*.iml
 
 uploads/
 Dokumentum/
 
 # --- 前端 (Vue / Node) ---
-Recipe-FrontEnd/node_modules/
-Recipe-FrontEnd/dist/
-Recipe-FrontEnd/.env.local
+Recipe_FrontEnd/node_modules/
+Recipe_FrontEnd/dist/
+Recipe_FrontEnd/.env.local

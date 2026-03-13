@@ -145,7 +145,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
                 ? userSavedRepository.findRecipeIdsByUserId(currentUserId)
                 : Collections.emptySet();
 
-      return searchHits.getSearchHits().stream()
+        return searchHits.getSearchHits().stream()
                 .map(SearchHit::getContent) // 剥开 ES 的外壳，拿到 RecipeDoc
                 .map(doc -> {
                     // a. MapStruct 极速转换
@@ -177,13 +177,13 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         if (currentUserId == null) {
 
-           return   getGuestRecommendations();
+            return   getGuestRecommendations();
         }
         else {
             UserPreferenceDto prefs = userService.getUserPreferences();
 
             if (prefs.isEmpty()) {
-               return getGuestRecommendations();
+                return getGuestRecommendations();
             }
             BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
@@ -236,11 +236,11 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             } else {
                 targetCourse = "SNACK";       // 深夜报社时间，推夜宵/小吃！
             }
-                final String currentCourse = targetCourse;
-                scoreFunctions.add(FunctionScore.of(fs -> fs
-                        .filter(f -> f.term(t -> t.field("courses").value(currentCourse)))
-                        .weight(2.) // 时令菜肴，权重提升！
-                ));
+            final String currentCourse = targetCourse;
+            scoreFunctions.add(FunctionScore.of(fs -> fs
+                    .filter(f -> f.term(t -> t.field("courses").value(currentCourse)))
+                    .weight(2.) // 时令菜肴，权重提升！
+            ));
 
 
             // 2. 菜系加分 (Cuisines)：如果命中喜欢的菜系，总分乘以 1.5 倍！

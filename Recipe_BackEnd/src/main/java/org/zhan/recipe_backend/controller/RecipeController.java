@@ -12,14 +12,11 @@ import org.zhan.recipe_backend.service.RecipeCardService;
 import org.zhan.recipe_backend.service.RecipeService;
 import org.zhan.recipe_backend.service.impl.RatingServiceImpl;
 
+import java.time.LocalTime;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/recipes")
-
-
-
-
 public class RecipeController {
 
     @Autowired
@@ -35,6 +32,12 @@ public class RecipeController {
     public Result getRecipe(@RequestBody RecipeCardDto dto, @RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "12") Integer pageSize) {
 
         return Result.Success(recipeCardService.getRecipeCards(dto, page, pageSize));
+    }
+
+    @GetMapping("/recommendations")
+    public Result getRecommendations(@RequestParam(required = false) Integer hour) {
+        int queryHour = hour != null ? hour : LocalTime.now().getHour();
+        return Result.Success(recipeCardService.getPersonalizedRecommendations(queryHour));
     }
 
     @GetMapping("/flavours")
@@ -72,16 +75,16 @@ public class RecipeController {
     @DeleteMapping("/rate")
     public Result deleteRecipe(@RequestParam("id") Long id) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        newStats=ratingService.deleteRating(id,userId);
-        return  Result.Success(newStats);
+        newStats = ratingService.deleteRating(id, userId);
+        return Result.Success(newStats);
     }
 
     @PostMapping("/create")
-    public Result addRecipe(@RequestBody RecipeDetailDto dto)
-    {
+    public Result addRecipe(@RequestBody RecipeDetailDto dto) {
         recipeService.addRecipe(dto);
-        return  Result.Success();
+        return Result.Success();
     }
+
     @PostMapping("/rate")
     public Result submitRating(@RequestBody RatingRequestDto dto) {
 
@@ -89,14 +92,10 @@ public class RecipeController {
 
         try {
             // 调用 Service，拿到最新的平均分和人数
-          newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
+            newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
             return Result.Success(newStats);
         } catch (Exception e) {
             return Result.Error("Failed to submit rating");
         }
     }
-
-
-
-
 }
