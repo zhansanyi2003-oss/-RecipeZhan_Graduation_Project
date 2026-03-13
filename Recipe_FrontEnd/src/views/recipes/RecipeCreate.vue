@@ -1,17 +1,32 @@
-<script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-// 引入拖拽组件
+﻿<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
-// 引入图标
-import { CameraFilled, Operation, MoreFilled, Plus, Picture, Delete } from '@element-plus/icons-vue'
-import { createRecipeApi } from '../../api/recipe'
+import { CameraFilled, Operation, Plus, Picture, Delete } from '@element-plus/icons-vue'
+import { createRecipeApi, getRecipeApi, updateRecipeApi } from '../../api/recipe'
 import { getAllFlavoursApi, getAllCuisinesApi } from '../../api/recipeCard'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const submitting = ref(false)
 const ruleFormRef = ref()
+let localIdSeed = Date.now()
+
+const nextLocalId = () => {
+  localIdSeed += 1
+  return localIdSeed
+}
+
+const createDefaultIngredients = () => [
+  { id: nextLocalId(), name: '', amount: '', note: '' },
+  { id: nextLocalId(), name: '', amount: '', note: '' },
+]
+
+const createDefaultSteps = () => [
+  { id: nextLocalId(), content: '', imageUrls: [] },
+  { id: nextLocalId(), content: '', imageUrls: [] },
+]
 
 const form = ref({
   title: '',
@@ -22,18 +37,18 @@ const form = ref({
   courses: [],
   cuisines: [],
   flavours: [],
-  diets: [],
-
-  ingredients: [
-    { id: Date.now(), name: '', amount: '', note: '' },
-    { id: Date.now() + 1, name: '', amount: '', note: '' },
-  ],
-
-  steps: [
-    { id: Date.now(), content: '', imageUrls: [] },
-    { id: Date.now() + 1, content: '', imageUrls: [] },
-  ],
+  dietTypes: [],
+  ingredients: createDefaultIngredients(),
+  steps: createDefaultSteps(),
 })
+
+const recipeId = computed(() => {
+  const id = Number(route.params.id)
+  return Number.isFinite(id) ? id : null
+})
+const isEditMode = computed(() => recipeId.value !== null && recipeId.value > 0)
+const pageTitle = computed(() => (isEditMode.value ? 'Edit Recipe' : 'Create a Masterpiece'))
+const submitButtonText = computed(() => (isEditMode.value ? 'Update Recipe' : 'Publish Recipe'))
 
 const rules = ref({
   title: [
@@ -53,7 +68,7 @@ const handleCoverSuccess = (response) => {
   if (response.code === 1) {
     form.value.coverImage = response.data
     ElMessage.success('Cover image uploaded!')
-    ruleFormRef.value.validateField('coverImage')
+    ruleFormRef.value?.validateField('coverImage')
   } else {
     ElMessage.error('Upload failed: ' + response.msg)
   }
@@ -77,60 +92,142 @@ const beforeUpload = (file) => {
 }
 
 const addIngredient = () => {
-  form.value.ingredients.push({ id: Date.now(), name: '', amount: '', note: '' })
+  form.value.ingredients.push({ id: nextLocalId(), name: '', amount: '', note: '' })
 }
 const removeIngredient = (index) => {
   form.value.ingredients.splice(index, 1)
 }
 
 const addStep = () => {
-  form.value.steps.push({ id: Date.now(), content: '', imageUrls: [] })
+  form.value.steps.push({ id: nextLocalId(), content: '', imageUrls: [] })
 }
 const removeStep = (index) => {
   form.value.steps.splice(index, 1)
 }
 
+const buildPayload = () => ({
+  title: form.value.title,
+  description: form.value.description,
+  coverImage: form.value.coverImage,
+  cookingTimeMin: form.value.cookingTimeMin,
+  difficulty: form.value.difficulty,
+  courses: form.value.courses,
+  cuisines: form.value.cuisines,
+  flavours: form.value.flavours,
+  dietTypes: form.value.dietTypes,
+  ingredients: form.value.ingredients
+    .map((item) => ({
+      name: item.name?.trim() || '',
+      amount: item.amount || '',
+      note: item.note || '',
+    }))
+    .filter((item) => item.name),
+  steps: form.value.steps
+    .map((item) => ({
+      content: item.content?.trim() || '',
+      imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
+    }))
+    .filter((item) => item.content),
+})
+
+const fillFormForEdit = (data) => {
+  form.value = {
+    ...form.value,
+    title: data?.title || '',
+    description: data?.description || '',
+    coverImage: data?.coverImage || '',
+    cookingTimeMin: data?.cookingTimeMin,
+    difficulty: data?.difficulty || null,
+    courses: data?.courses || [],
+    cuisines: data?.cuisines || [],
+    flavours: data?.flavours || [],
+    dietTypes: data?.dietTypes || data?.diets || [],
+    ingredients: (data?.ingredients || []).length
+      ? data.ingredients.map((item) => ({
+          id: nextLocalId(),
+          name: item?.name || '',
+          amount: item?.amount || '',
+          note: item?.note || '',
+        }))
+      : createDefaultIngredients(),
+    steps: (data?.steps || []).length
+      ? data.steps.map((item) => ({
+          id: nextLocalId(),
+          content: item?.content || '',
+          imageUrls: item?.imageUrls || [],
+        }))
+      : createDefaultSteps(),
+  }
+}
+
+const loadRecipeForEdit = async () => {
+  if (!isEditMode.value) return
+
+  try {
+    const res = await getRecipeApi(recipeId.value)
+    if (res.code === 1) {
+      fillFormForEdit(res.data)
+    } else {
+      ElMessage.error(res.msg || 'Failed to load recipe data.')
+      router.replace('/profile')
+    }
+  } catch (error) {
+    ElMessage.error('Failed to load recipe data.')
+    router.replace('/profile')
+  }
+}
+
 const submitRecipe = async () => {
   if (!ruleFormRef.value) return
 
-  const ingredients = form.value.ingredients
-  if (ingredients.length < 1 || !ingredients[0].name.trim()) {
+  const hasIngredient = form.value.ingredients.some((item) => item.name && item.name.trim())
+  if (!hasIngredient) {
     ElMessage.warning('Please add at least one ingredient.')
     return
   }
 
-  const steps = form.value.steps
-  if (steps.length < 1 || !steps[0].content.trim()) {
+  const hasStep = form.value.steps.some((item) => item.content && item.content.trim())
+  if (!hasStep) {
     ElMessage.warning('Please add at least one step.')
     return
   }
 
   await ruleFormRef.value.validate(async (valid) => {
-    if (valid) {
-      submitting.value = true
-      try {
-        const res = await createRecipeApi(form.value)
-        if (res.code === 1) {
-          ElMessage.success('Recipe published successfully! 🎉')
-          router.push('/')
-        } else {
-          ElMessage.error(res.msg || 'Publish failed')
-        }
-      } catch (error) {
-        ElMessage.error('Network error, please try again.')
-      } finally {
-        submitting.value = false
-      }
-    } else {
+    if (!valid) {
       ElMessage.error('Please check the form for missing fields.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    submitting.value = true
+    try {
+      const payload = buildPayload()
+      const res = isEditMode.value
+        ? await updateRecipeApi(recipeId.value, payload)
+        : await createRecipeApi(payload)
+
+      if (res.code === 1) {
+        ElMessage.success(isEditMode.value ? 'Recipe updated successfully!' : 'Recipe published successfully!')
+        if (isEditMode.value) {
+          router.push(`/recipe/${recipeId.value}`)
+        } else {
+          router.push('/')
+        }
+      } else {
+        ElMessage.error(res.msg || (isEditMode.value ? 'Update failed' : 'Publish failed'))
+      }
+    } catch (error) {
+      ElMessage.error('Network error, please try again.')
+    } finally {
+      submitting.value = false
     }
   })
 }
+
 const flavours = ref([])
 const cuisines = ref([])
 
-const getFlavous = async () => {
+const getFlavours = async () => {
   const result = await getAllFlavoursApi()
   if (result.code) {
     flavours.value = result.data
@@ -143,9 +240,9 @@ const getCuisines = async () => {
   }
 }
 
-onMounted(() => {
-  getFlavous()
-  getCuisines()
+onMounted(async () => {
+  await Promise.all([getFlavours(), getCuisines()])
+  await loadRecipeForEdit()
 })
 </script>
 
@@ -153,7 +250,7 @@ onMounted(() => {
   <div class="create-page-wrapper">
     <div class="sticky-header">
       <div class="header-content">
-        <h2 class="page-title">Create a Masterpiece</h2>
+        <h2 class="page-title">{{ pageTitle }}</h2>
         <div class="actions">
           <el-button plain round @click="router.back()">Cancel</el-button>
           <el-button
@@ -164,7 +261,7 @@ onMounted(() => {
             :loading="submitting"
             class="publish-btn"
           >
-            Publish Recipe
+            {{ submitButtonText }}
           </el-button>
         </div>
       </div>
@@ -248,9 +345,9 @@ onMounted(() => {
                   class="w-full"
                   size="large"
                 >
-                  <el-option label="🌟 Easy" value="EASY" />
-                  <el-option label="🍳 Medium" value="MEDIUM" />
-                  <el-option label="🔥 Hard" value="HARD" />
+                  <el-option label="Easy" value="EASY" />
+                  <el-option label="Medium" value="MEDIUM" />
+                  <el-option label="Hard" value="HARD" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -307,9 +404,9 @@ onMounted(() => {
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="8">
-              <el-form-item label="Dietary (Optional)" prop="diets">
+              <el-form-item label="Dietary (Optional)" prop="dietTypes">
                 <el-select
-                  v-model="form.diets"
+                  v-model="form.dietTypes"
                   multiple
                   filterable
                   allow-create
@@ -468,7 +565,7 @@ onMounted(() => {
   padding-bottom: 100px;
 }
 
-/* ================= 悬浮吸顶 Header ================= */
+/* ================= ć‚¬ćµ®ĺ¸éˇ¶ Header ================= */
 .sticky-header {
   position: sticky;
   top: 0;
@@ -502,7 +599,7 @@ onMounted(() => {
   padding: 0 20px;
 }
 
-/* ================= 🌟 重点优化：通用白色卡片 ================= */
+/* ================= đźŚź é‡Ťç‚ąäĽĺŚ–ďĽšé€šç”¨ç™˝č‰˛ĺŤˇç‰‡ ================= */
 .meta-card {
   background: white;
   padding: 30px;
@@ -512,10 +609,10 @@ onMounted(() => {
   border: 1px solid #f0f2f5;
 }
 
-/* ================= 🌟 重点优化：经典封面上传区 ================= */
+/* ================= đźŚź é‡Ťç‚ąäĽĺŚ–ďĽšç»Źĺ…¸ĺ°éť˘ä¸ŠäĽ ĺŚş ================= */
 .classic-uploader {
   width: 100%;
-  height: 280px; /* 固定高度，完美契合右侧表单高度 */
+  height: 280px; /* ĺ›şĺ®šé«ĺş¦ďĽŚĺ®ŚçľŽĺĄ‘ĺĺŹłäľ§čˇ¨ĺŤ•é«ĺş¦ */
   border-radius: 12px;
   border: 2px dashed #d5ebe1;
   background: #fafdfb;
@@ -588,11 +685,11 @@ onMounted(() => {
   opacity: 1;
 }
 
-/* ================= 🌟 重点优化：带边框的高级输入框 ================= */
+/* ================= đźŚź é‡Ťç‚ąäĽĺŚ–ďĽšĺ¸¦čľąćˇ†çš„é«çş§čľ“ĺ…Ąćˇ† ================= */
 :deep(.modern-input .el-input__wrapper),
 :deep(.modern-input .el-textarea__inner) {
   border-radius: 12px;
-  box-shadow: 0 0 0 1px #dcdfe6 inset; /* 明确的默认边框 */
+  box-shadow: 0 0 0 1px #dcdfe6 inset; /* ćŽçˇ®çš„é»č®¤čľąćˇ† */
   background-color: #fafdfb;
   transition: all 0.2s ease;
 }
@@ -602,10 +699,10 @@ onMounted(() => {
 }
 :deep(.modern-input .el-input__wrapper.is-focus),
 :deep(.modern-input .el-textarea__inner:focus) {
-  box-shadow: 0 0 0 2px #4ea685 inset !important; /* 获得焦点时变粗薄荷绿 */
+  box-shadow: 0 0 0 2px #4ea685 inset !important; /* čŽ·ĺľ—ç„¦ç‚ąć—¶ĺŹç˛—č–„čŤ·ç»ż */
   background-color: white;
 }
-/* 标题输入框加粗放大 */
+/* ć ‡é˘čľ“ĺ…Ąćˇ†ĺŠ ç˛—ć”ľĺ¤§ */
 :deep(.title-input .el-input__inner) {
   font-size: 20px;
   font-weight: bold;
@@ -617,14 +714,14 @@ onMounted(() => {
   color: #606266;
   resize: none;
 }
-/* 给 Form Label 增加高级感 */
+/* ç»™ Form Label ĺ˘žĺŠ é«çş§ć„ź */
 :deep(.el-form-item__label) {
   font-weight: bold;
   color: #2c3e50;
   padding-bottom: 8px;
 }
 
-/* ================= 底部卡片通用 ================= */
+/* ================= ĺş•é¨ĺŤˇç‰‡é€šç”¨ ================= */
 .section-title {
   font-size: 20px;
   color: #2c3e50;
@@ -640,7 +737,7 @@ onMounted(() => {
   margin: 0;
 }
 
-/* ================= 拖拽列表 ================= */
+/* ================= ć‹–ć‹˝ĺ—čˇ¨ ================= */
 .content-split {
   margin-top: 20px;
 }
@@ -817,3 +914,4 @@ onMounted(() => {
   }
 }
 </style>
+

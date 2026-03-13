@@ -8,6 +8,10 @@ export const createRecipeApi = (recipe) => {
   return request.post('recipes/create', recipe)
 }
 
+export const updateRecipeApi = (id, recipe) => {
+  return request.put(`/recipes/${id}`, recipe)
+}
+
 export const submitRatingApi = (data) => {
   return request.post('/recipes/rate', data)
 }

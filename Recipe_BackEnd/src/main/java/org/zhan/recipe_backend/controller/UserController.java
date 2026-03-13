@@ -20,9 +20,10 @@ public class UserController {
     @Autowired
     private UploadFileService uploadFileService;
     @GetMapping("/myRecipe")
-    public Result getMyRecipe() {
+    public Result getMyRecipe(@RequestParam(defaultValue = "1") Integer page,
+                              @RequestParam(defaultValue = "12") Integer pageSize) {
 
-        return  Result.Success(userService.getMyRecipe());
+        return  Result.Success(userService.getMyRecipe(page,pageSize));
 
     }
     @PostMapping("/save/{id}")

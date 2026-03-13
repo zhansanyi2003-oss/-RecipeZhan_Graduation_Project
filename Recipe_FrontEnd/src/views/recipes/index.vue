@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import RecipeCard from '../../component/recipeCard.vue'
+import { ref, onMounted, watch } from 'vue'
+import RecipeSliceList from '../../component/RecipeSliceList.vue'
 import { getRecipeCardApi } from '../../api/recipeCard'
 import { getAllCuisinesApi } from '../../api/recipeCard'
 import { getAllFlavoursApi } from '../../api/recipeCard'
 
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 // 引入图标
 import {
   ArrowRight,
@@ -17,11 +17,9 @@ import {
   Dish,
 } from '@element-plus/icons-vue'
 
-// 1. 模拟食谱数据
-const recipeCards = ref([])
-
-// 2. 搜索表单对象 (完美的数据结构)
-const searchRecipe = ref({
+const route = useRoute()
+const SEARCH_STATE_KEY = 'recipe_search_state_v1'
+const defaultSearchState = () => ({
   title: '',
   ingredientTags: [],
   cookingTimeMin: '',
@@ -29,6 +27,48 @@ const searchRecipe = ref({
   courses: [],
   cuisines: [],
 })
+
+// 1. 食谱列表由 Slice 组件管理，页面只维护显示数量
+const displayedRecipeCount = ref(0)
+const sliceReloadKey = ref(0)
+const sliceReady = ref(false)
+
+// 2. 搜索表单对象 (完美的数据结构)
+const searchRecipe = ref(defaultSearchState())
+
+const normalizeStringArray = (value) => {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string' && value.trim()) return value.split(',').map((v) => v.trim()).filter(Boolean)
+  return []
+}
+
+const saveSearchState = () => {
+  sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(searchRecipe.value))
+}
+
+const loadSearchState = () => {
+  const raw = sessionStorage.getItem(SEARCH_STATE_KEY)
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      searchRecipe.value = {
+        ...defaultSearchState(),
+        ...parsed,
+        ingredientTags: normalizeStringArray(parsed.ingredientTags),
+        flavours: normalizeStringArray(parsed.flavours),
+        courses: normalizeStringArray(parsed.courses),
+        cuisines: normalizeStringArray(parsed.cuisines),
+      }
+      return
+    } catch (error) {
+      sessionStorage.removeItem(SEARCH_STATE_KEY)
+    }
+  }
+
+  if (typeof route.query.keyword === 'string' && route.query.keyword.trim()) {
+    searchRecipe.value.title = route.query.keyword.trim()
+  }
+}
 
 // 3. 食材动态标签的处理逻辑
 const ingredientInputValue = ref('')
@@ -88,55 +128,28 @@ const filterConfig = ref([
 
 // 5. 重置所有搜索条件
 const handleReset = () => {
-  searchRecipe.value = {
-    title: '',
-    ingredientTags: [],
-    cookingTimeMin: '',
-    flavours: [],
-    courses: [],
-    cuisines: [],
-  }
+  searchRecipe.value = defaultSearchState()
+  ingredientInputValue.value = ''
+  saveSearchState()
+  sliceReloadKey.value += 1
 }
 
 // 6. 点击搜索按钮
-const hasNext = ref(false)
 const handleSearch = () => {
-  currentPage.value = 1
-  fetchRecipes(true)
+  saveSearchState()
+  sliceReloadKey.value += 1
 }
 
-const fetchRecipes = async (isNewSearch) => {
-  try {
-    const result = await getRecipeCardApi(searchRecipe.value, currentPage.value, pageSize.value)
-
-    if (result.code) {
-      const newData = result.data.content
-
-      // 判断是覆盖还是追加
-      if (isNewSearch) {
-        recipeCards.value = newData
-      } else {
-        recipeCards.value.push(...newData) // ✨ 展开语法，把新卡片追加到老卡片后面
-      }
-
-      // ✨ 核心魔法：Spring Boot 返回的 Slice 里面有一个 last 属性。
-      // 如果 last 为 true，说明是最后一页了。所以 hasNext 就是 !last。
-      hasNext.value = !result.data.last
-    }
-  } catch (error) {
-    console.error('请求炸了：', error)
-  }
+const fetchRecipePage = async (page, pageSize) => {
+  return await getRecipeCardApi(searchRecipe.value, page, pageSize)
 }
 
-const loadMoreRecipes = () => {
-  currentPage.value++ // 页码 +1
-  fetchRecipes(false)
+const handleSliceItemsChange = (items) => {
+  displayedRecipeCount.value = items.length
 }
 
 // 7. 排序和分页逻辑
 const sortBy = ref('default')
-const currentPage = ref(1)
-const pageSize = ref(12)
 const flavours = ref([])
 const cuisines = ref([])
 
@@ -159,10 +172,19 @@ const getCuisines = async () => {
 
 // 8. 页面加载：拉取动态选项 & 初始化列表
 onMounted(() => {
-  fetchRecipes(true)
+  loadSearchState()
   getFlavours()
   getCuisines()
+  sliceReady.value = true
 })
+
+watch(
+  searchRecipe,
+  () => {
+    saveSearchState()
+  },
+  { deep: true },
+)
 </script>
 
 <template>
@@ -258,7 +280,7 @@ onMounted(() => {
     <div class="recipes-section">
       <div class="list-header">
         <div class="left-spacer"></div>
-        <h2 class="list-title">Recipes ({{ recipeCards.length }})</h2>
+        <h2 class="list-title">Recipes ({{ displayedRecipeCount }})</h2>
         <div class="sort-control">
           <el-select v-model="sortBy" placeholder="Sort By" class="sort-select">
             <el-option label="Default" value="default" />
@@ -268,36 +290,12 @@ onMounted(() => {
           </el-select>
         </div>
       </div>
-
-      <el-row :gutter="24">
-        <el-col
-          v-for="item in recipeCards"
-          :key="item.id"
-          :xs="24"
-          :sm="12"
-          :md="8"
-          :lg="6"
-          :xl="4"
-        >
-          <RecipeCard :data="item" />
-        </el-col>
-      </el-row>
-    </div>
-    <div class="load-more-container">
-      <el-button
-        v-if="hasNext"
-        type="primary"
-        size="large"
-        round
-        @click="loadMoreRecipes"
-        class="load-more-btn"
-      >
-        Load More Recipes ...
-      </el-button>
-
-      <el-divider v-else-if="recipeCards.length > 0" class="no-more-tips">
-        Oops, you have reached the end! 🍳
-      </el-divider>
+      <RecipeSliceList
+        :fetch-page="fetchRecipePage"
+        :reload-key="sliceReloadKey"
+        :enabled="sliceReady"
+        @items-change="handleSliceItemsChange"
+      />
     </div>
   </div>
 </template>
@@ -537,553 +535,8 @@ onMounted(() => {
 }
 
 /* 分页 */
-.load-more-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 40px;
-  padding-bottom: 50px;
-}
-.load-more-btn {
-  width: 200px;
-  font-weight: bold;
-  background-color: #4ea685 !important;
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-.load-more-btn:hover {
-  background-color: #57b894 !important; /* 悬浮时变成略浅一点的绿 */
-  transform: scale(1.05);
-}
-.no-more-tips {
-  color: #999;
-  font-size: 14px;
-}
 </style>
-<!-- <script setup>
-import { ref, onMounted } from 'vue'
-import RecipeCard from '../../component/recipeCard.vue'
-import { getRecipeCardApi } from '../../api/recipeCard'
-import { getAllCuisinesApi } from '../../api/recipeCard'
-import { getAllFlavoursApi } from '../../api/recipeCard'
 
-import { useRouter } from 'vue-router'
-// 引入图标
-import {
-  ArrowRight,
-  Search,
-  Notebook,
-  Timer,
-  Sugar,
-  KnifeFork,
-  Dish,
-  RefreshRight,
-  Food,
-} from '@element-plus/icons-vue'
 
-// 1. 模拟食谱数据
-const recipeCards = ref([])
 
-// 2. 搜索表单对象 (完美的数据结构)
-const searchRecipe = ref({
-  title: '',
-  ingredientTags: [],
-  cookingTimeMin: '',
-  flavours: [],
-  courses: [],
-  cuisines: [],
-})
 
-// 3. 食材动态标签的处理逻辑
-const ingredientInputValue = ref('')
-const addIngredientTag = () => {
-  const val = ingredientInputValue.value.trim()
-  if (val && !searchRecipe.value.ingredientTags.includes(val)) {
-    searchRecipe.value.ingredientTags.push(val)
-  }
-  ingredientInputValue.value = '' // 清空输入框
-}
-const removeIngredientTag = (tag) => {
-  searchRecipe.value.ingredientTags = searchRecipe.value.ingredientTags.filter((t) => t !== tag)
-}
-
-// 4. 4宫格下拉框配置 (必须用 ref 包裹，因为有动态数据)
-const filterConfig = ref([
-  {
-    prop: 'cookingTimeMin',
-    label: 'Cooking Time',
-    icon: 'Timer',
-    multiple: false,
-    options: [
-      { label: 'Less than 15 mins', value: '15' },
-      { label: 'Less than 30 mins', value: '30' },
-      { label: 'Less than an hour', value: '60' },
-      { label: 'More than an hour', value: '60+' },
-    ],
-  },
-  {
-    prop: 'flavours',
-    label: 'Flavour',
-    icon: 'Sugar',
-    multiple: true,
-    options: [], // 👈 留空，等待后端数据
-  },
-  {
-    prop: 'courses',
-    label: 'Course',
-    icon: 'KnifeFork',
-    multiple: true,
-    options: [
-      { label: 'Breakfast', value: 'Breakfast' },
-      { label: 'Lunch', value: 'Lunch' },
-      { label: 'Dinner', value: 'Dinner' },
-      { label: 'Dessert', value: 'Dessert' },
-      { label: 'Snack', value: 'Snack' },
-    ],
-  },
-  {
-    prop: 'cuisines',
-    label: 'Cuisine',
-    icon: 'Dish',
-    multiple: true,
-    options: [], // 👈 留空，等待后端数据
-  },
-])
-
-// 5. 重置所有搜索条件
-const handleReset = () => {
-  searchRecipe.value = {
-    title: '',
-    ingredientTags: [],
-    cookingTimeMin: '',
-    flavours: [],
-    courses: [],
-    cuisines: [],
-  }
-}
-
-// 6. 点击搜索按钮
-const hasNext = ref(false)
-const handleSearch = () => {
-  currentPage.value = 1
-  fetchRecipes(true)
-}
-
-const fetchRecipes = async (isNewSearch) => {
-  try {
-    const result = await getRecipeCardApi(searchRecipe.value, currentPage.value, pageSize.value)
-
-    if (result.code) {
-      const newData = result.data.content
-
-      // 判断是覆盖还是追加
-      if (isNewSearch) {
-        recipeCards.value = newData
-      } else {
-        recipeCards.value.push(...newData)
-      }
-
-      hasNext.value = !result.data.last
-    }
-  } catch (error) {
-    console.error('请求炸了：', error)
-  }
-}
-
-const loadMoreRecipes = () => {
-  currentPage.value++
-  fetchRecipes(false)
-}
-
-// 7. 排序和分页逻辑
-const sortBy = ref('default')
-const currentPage = ref(1)
-const pageSize = ref(12)
-const flavours = ref([])
-const cuisines = ref([])
-
-const getFlavours = async () => {
-  const result = await getAllFlavoursApi()
-  if (result.code) {
-    flavours.value = result.data
-    const flavourConfig = filterConfig.value.find((item) => item.prop === 'flavours')
-    flavourConfig.options = flavours.value.map((i) => ({ label: i, value: i }))
-  }
-}
-const getCuisines = async () => {
-  const result = await getAllCuisinesApi()
-  if (result.code) {
-    cuisines.value = result.data
-    const cuisineConfig = filterConfig.value.find((item) => item.prop === 'cuisines')
-    cuisineConfig.options = cuisines.value.map((i) => ({ label: i, value: i }))
-  }
-}
-
-// 8. 页面加载：拉取动态选项 & 初始化列表
-onMounted(() => {
-  fetchRecipes(true)
-  getFlavours()
-  getCuisines()
-})
-</script>
-
-<template>
-  <div class="recipe-list-page">
-    <div class="container">
-      <div class="modern-search-panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Explore Recipes</h2>
-          <el-button link class="reset-btn" @click="handleReset">
-            <el-icon><RefreshRight /></el-icon>
-            <span style="margin-left: 4px">Reset Filters</span>
-          </el-button>
-        </div>
-
-        <div class="primary-search-row">
-          <el-input
-            v-model="searchRecipe.title"
-            placeholder="Search by dish name..."
-            size="large"
-            clearable
-            class="custom-modern-input"
-          >
-            <template #prefix
-              ><el-icon><Search /></el-icon
-            ></template>
-          </el-input>
-        </div>
-
-        <div class="ingredient-section">
-          <span class="section-label">Ingredients:</span>
-          <div class="tags-wrapper">
-            <el-tag
-              v-for="tag in searchRecipe.ingredientTags"
-              :key="tag"
-              closable
-              effect="light"
-              type="success"
-              round
-              class="modern-tag"
-              @close="removeIngredientTag(tag)"
-            >
-              {{ tag }}
-            </el-tag>
-            <el-input
-              v-model="ingredientInputValue"
-              class="modern-tag-input"
-              size="default"
-              placeholder="+ Add (Press Enter)"
-              @keyup.enter="addIngredientTag"
-              @blur="addIngredientTag"
-            />
-          </div>
-        </div>
-
-        <div class="filters-grid">
-          <div v-for="item in filterConfig" :key="item.prop" class="filter-item">
-            <el-select
-              v-model="searchRecipe[item.prop]"
-              :placeholder="item.label"
-              class="custom-modern-select"
-              size="large"
-              :multiple="item.multiple"
-              clearable
-              collapse-tags
-              collapse-tags-tooltip
-            >
-              <template #prefix>
-                <el-icon><component :is="item.icon" /></el-icon>
-              </template>
-
-              <el-option
-                v-for="opt in item.options"
-                :key="opt.value"
-                :label="opt.label"
-                :value="opt.value"
-              />
-            </el-select>
-          </div>
-        </div>
-
-        <div class="panel-actions">
-          <el-button type="primary" size="large" class="submit-search-btn" @click="handleSearch">
-            <el-icon><Notebook /></el-icon>
-            <span style="margin-left: 8px">Find Recipes</span>
-          </el-button>
-        </div>
-      </div>
-    </div>
-
-    <div class="recipes-section">
-      <div class="list-header">
-        <div class="left-spacer"></div>
-        <h2 class="list-title">Recipes ({{ recipeCards.length }})</h2>
-        <div class="sort-control">
-          <el-select v-model="sortBy" placeholder="Sort By" class="sort-select">
-            <el-option label="Default" value="default" />
-            <el-option label="Newest" value="time_new" />
-            <el-option label="Most Liked" value="likes_desc" />
-            <el-option label="Fastest" value="time_asc" />
-          </el-select>
-        </div>
-      </div>
-
-      <el-row :gutter="24">
-        <el-col
-          v-for="item in recipeCards"
-          :key="item.id"
-          :xs="24"
-          :sm="12"
-          :md="8"
-          :lg="6"
-          :xl="4"
-        >
-          <RecipeCard :data="item" />
-        </el-col>
-      </el-row>
-    </div>
-
-    <div class="load-more-container">
-      <el-button
-        v-if="hasNext"
-        type="primary"
-        size="large"
-        round
-        @click="loadMoreRecipes"
-        class="load-more-btn"
-      >
-        Load More Recipes ...
-      </el-button>
-      <el-divider v-else-if="recipeCards.length > 0" class="no-more-tips">
-        Oops, you have reached the end! 🍳
-      </el-divider>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-/* 全局页面 */
-.recipe-list-page {
-  width: 100%;
-}
-.container {
-  height: auto;
-  margin-bottom: 40px;
-  padding: 0 20px;
-}
-
-/* ================= 现代高级搜索面板 ================= */
-.modern-search-panel {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 30px 40px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); /* 极具高级感的弱阴影 */
-  border: 1px solid #f0f2f5;
-  margin: 0 auto 40px auto;
-  max-width: 1200px;
-}
-
-/* 1. 头部 */
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-}
-.panel-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: #2c3e50;
-  margin: 0;
-}
-.reset-btn {
-  color: #909399;
-  font-size: 15px;
-  font-weight: 600;
-}
-.reset-btn:hover {
-  color: #4ea685;
-}
-
-/* 2. 菜名搜索 */
-.primary-search-row {
-  margin-bottom: 25px;
-}
-
-/* 3. 食材标签区 */
-.ingredient-section {
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-  margin-bottom: 30px;
-  background-color: #f8f9fa; /* 给食材区一个浅灰底色，更规整 */
-  padding: 15px 20px;
-  border-radius: 12px;
-}
-.section-label {
-  font-size: 15px;
-  font-weight: bold;
-  color: #606266;
-  margin-top: 6px;
-  white-space: nowrap;
-}
-.tags-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-.modern-tag {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 0 12px;
-  height: 32px;
-  line-height: 30px;
-}
-.modern-tag-input {
-  width: 160px;
-}
-:deep(.modern-tag-input .el-input__wrapper) {
-  background-color: white;
-  border-radius: 16px;
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
-}
-:deep(.modern-tag-input .el-input__wrapper:focus-within) {
-  box-shadow: 0 0 0 1px #4ea685 inset;
-}
-
-/* 4. 4宫格高级筛选 */
-.filters-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 完美的 4 列等宽 */
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-/* ✨ 统一输入框风格：浅灰底，圆角，无边框 */
-:deep(.custom-modern-input .el-input__wrapper),
-:deep(.custom-modern-select .el-select__wrapper) {
-  background-color: #f8f9fa;
-  border-radius: 12px;
-  box-shadow: none !important;
-  border: 1px solid transparent;
-  padding: 8px 15px;
-  transition: all 0.3s ease;
-}
-/* 聚焦时变白，绿边框 */
-:deep(.custom-modern-input .el-input__wrapper.is-focus),
-:deep(.custom-modern-select .el-select__wrapper.is-focus),
-:deep(.custom-modern-input .el-input__wrapper:hover),
-:deep(.custom-modern-select .el-select__wrapper:hover) {
-  background-color: #ffffff;
-  box-shadow: 0 0 0 1px #4ea685 inset !important;
-}
-/* 内部文字 */
-:deep(.custom-modern-input .el-input__inner),
-:deep(.custom-modern-select .el-select__placeholder) {
-  color: #2c3e50;
-  font-weight: 600;
-}
-
-/* 5. 底部按钮区 */
-.panel-actions {
-  display: flex;
-  justify-content: flex-end;
-  border-top: 1px dashed #ebeef5;
-  padding-top: 25px;
-}
-.submit-search-btn {
-  background-color: #4ea685;
-  border-color: #4ea685;
-  border-radius: 12px;
-  padding: 22px 40px;
-  font-size: 16px;
-  font-weight: bold;
-  box-shadow: 0 6px 16px rgba(78, 166, 133, 0.25);
-  transition: all 0.3s;
-}
-.submit-search-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(78, 166, 133, 0.35);
-}
-
-/* ================= 响应式适配 ================= */
-@media (max-width: 992px) {
-  .filters-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 768px) {
-  .ingredient-section {
-    flex-direction: column;
-  }
-  .modern-search-panel {
-    padding: 20px;
-  }
-}
-@media (max-width: 576px) {
-  .filters-grid {
-    grid-template-columns: 1fr;
-  }
-  .submit-search-btn {
-    width: 100%;
-  }
-}
-
-/* ================= 列表区原有样式保留 ================= */
-.recipes-section {
-  padding: 0 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-.list-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 30px;
-}
-.left-spacer {
-  flex: 1;
-}
-.list-title {
-  flex: 1;
-  text-align: center;
-  color: #333;
-  margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-}
-.sort-control {
-  flex: 1;
-  display: flex;
-  justify-content: flex-end;
-}
-.sort-select {
-  width: 130px;
-}
-:deep(.sort-select .el-input__wrapper) {
-  border-radius: 8px;
-}
-
-.load-more-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 40px;
-  padding-bottom: 50px;
-}
-.load-more-btn {
-  width: 200px;
-  font-weight: bold;
-  background-color: #4ea685 !important;
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-.load-more-btn:hover {
-  background-color: #57b894 !important;
-  transform: scale(1.05);
-}
-.no-more-tips {
-  color: #999;
-  font-size: 14px;
-}
-</style> -->

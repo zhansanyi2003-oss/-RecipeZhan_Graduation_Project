@@ -29,6 +29,16 @@ public interface RecipeMapper {
     @Mapping(target = "userScore", ignore = true)
     RecipeDetailDto toDetailDto(Recipe recipe);
 
+    @Mapping(source = "recipeFlavours", target = "flavours")
+    @Mapping(source = "recipeCourses", target = "courses")
+    @Mapping(source = "recipeCuisines", target = "cuisines")
+    @Mapping(source = "recipeDietTypes", target = "dietTypes")
+    @Mapping(source = "recipeIngredients", target = "ingredientTags")
+    @Mapping(target = "isLiked", ignore = true)
+    RecipeCardDto toCardDto(Recipe recipe);
+
+
+
 
     @Mapping(source = "ingredient.name", target = "name")
     IngredientDto toIngredientDto(Recipe_Ingredient ri);

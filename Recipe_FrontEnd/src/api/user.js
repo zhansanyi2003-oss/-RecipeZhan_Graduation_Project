@@ -1,7 +1,7 @@
 import request from '../utils/request'
 
-export const getMyRecipeApi = () => {
-  return request.get(`/users/myRecipe`)
+export const getMyRecipeApi = (page, size) => {
+  return request.get(`/users/myRecipe?page=${page}&pageSize=${size}`)
 }
 
 export const getSavedRecipeApi = (page, size) => {

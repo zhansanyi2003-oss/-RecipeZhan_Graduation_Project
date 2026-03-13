@@ -16,6 +16,7 @@ import org.zhan.recipe_backend.utils.AuthUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -89,6 +90,34 @@ public class RecipeServiceImpl implements RecipeService {
 
         Recipe savedRecipe = recipeRepository.save(recipe);
 
+        syncToElasticsearch(savedRecipe);
+    }
+
+    @Transactional
+    @Override
+    public void updateRecipe(Long id, RecipeDetailDto dto) {
+        Long currentUserId = AuthUtils.getCurrentUserIdOrNull();
+        if (currentUserId == null) {
+            throw new RuntimeException("Please login first.");
+        }
+
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
+
+        if (recipe.getAuthor() == null || !recipe.getAuthor().getId().equals(currentUserId)) {
+            throw new RuntimeException("You can only edit your own recipe.");
+        }
+
+        BeanUtils.copyProperties(dto, recipe, "id", "author", "averageRating", "ratingCount", "createdAt", "updatedAt");
+
+        syncCollection(recipe.getRecipeFlavours(), buildFlavours(dto.getFlavours(), recipe), recipe::setRecipeFlavours);
+        syncCollection(recipe.getRecipeCourses(), buildCourses(dto.getCourses(), recipe), recipe::setRecipeCourses);
+        syncCollection(recipe.getRecipeCuisines(), buildCuisines(dto.getCuisines(), recipe), recipe::setRecipeCuisines);
+        syncCollection(recipe.getRecipeDietTypes(), buildDietType(dto.getDietTypes(), recipe), recipe::setRecipeDietTypes);
+        syncCollection(recipe.getRecipeIngredients(), buildIngredients(dto.getIngredients(), recipe), recipe::setRecipeIngredients);
+        syncCollection(recipe.getSteps(), buildSteps(dto.getSteps(), recipe), recipe::setSteps);
+
+        Recipe savedRecipe = recipeRepository.save(recipe);
         syncToElasticsearch(savedRecipe);
     }
 
@@ -171,6 +200,15 @@ public class RecipeServiceImpl implements RecipeService {
             steps.add(step);
         }
         return steps;
+    }
+
+    private <T> void syncCollection(List<T> current, List<T> replacement, Consumer<List<T>> setter) {
+        if (current == null) {
+            setter.accept(replacement);
+            return;
+        }
+        current.clear();
+        current.addAll(replacement);
     }
 
 

@@ -85,6 +85,12 @@ public class RecipeController {
         return Result.Success();
     }
 
+    @PutMapping("/{id}")
+    public Result updateRecipe(@PathVariable Long id, @RequestBody RecipeDetailDto dto) {
+        recipeService.updateRecipe(id, dto);
+        return Result.Success();
+    }
+
     @PostMapping("/rate")
     public Result submitRating(@RequestBody RatingRequestDto dto) {
 
