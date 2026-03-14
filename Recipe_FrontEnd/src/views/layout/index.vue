@@ -1,69 +1,69 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router' // 🌟 新增 useRoute
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-// 🌟 修复 1：必须引入你用到的图标
-import { UserFilled, SwitchButton, EditPen } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
+const mobileNavOpen = ref(false)
 
 const userInfo = ref({ name: 'Visitor', isLoggedIn: false })
 
-// 检查登录状态的核心逻辑
 const checkLoginStatus = () => {
   const loginUserStr = localStorage.getItem('loginUser')
-  if (loginUserStr) {
-    try {
-      const loginUser = JSON.parse(loginUserStr)
-      if (loginUser && loginUser.username) {
-        // 🚨 注意：之前我们在登录页存的叫 username，不是 name
-        userInfo.value = { name: loginUser.username, isLoggedIn: true }
-      }
-    } catch (e) {
-      console.error('Data Error', e)
-    }
-  } else {
+  if (!loginUserStr) {
     userInfo.value = { name: 'Visitor', isLoggedIn: false }
+    return
   }
+
+  try {
+    const loginUser = JSON.parse(loginUserStr)
+    if (loginUser?.username) {
+      userInfo.value = { name: loginUser.username, isLoggedIn: true }
+      return
+    }
+  } catch (error) {
+    console.error('login data error', error)
+  }
+
+  userInfo.value = { name: 'Visitor', isLoggedIn: false }
 }
 
-// 退出登录逻辑
 const handleLogout = () => {
   ElMessageBox.confirm('Are you sure to quit?', 'Warning', {
     confirmButtonText: 'Quit',
-    cancelButtonText: 'Cancel', // 顺手修了个拼写小错误 Cancell -> Cancel
+    cancelButtonText: 'Cancel',
     type: 'warning',
   })
     .then(() => {
-      // 1. 清除本地存储
       localStorage.removeItem('loginUser')
-      // 2. 恢复游客状态
       userInfo.value = { name: 'Visitor', isLoggedIn: false }
+      mobileNavOpen.value = false
       ElMessage.success('Logged out successfully')
-      // 3. 跳转到首页 (根据你的路由配置决定)
       router.push('/')
     })
     .catch(() => {})
 }
 
-// 跳转登录页
 const goToLogin = () => {
-  // 🌟 高级技巧：带上当前页面的路径，方便登录后跳回来
+  mobileNavOpen.value = false
   router.push(`/login?redirect=${route.path}`)
 }
 
-// 🌟 修复 2：页面刚加载时，立刻检查一次状态！
+const navigate = (path) => {
+  mobileNavOpen.value = false
+  router.push(path)
+}
+
 onMounted(() => {
   checkLoginStatus()
 })
 
-// 🌟 修复 3：监听路由变化！
-// 只要页面路径一变（比如刚从 /login 登录成功跳回来），立刻重新检查状态！
 watch(
   () => route.path,
   () => {
     checkLoginStatus()
+    mobileNavOpen.value = false
   },
 )
 </script>
@@ -73,7 +73,7 @@ watch(
     <el-container class="full-height">
       <el-header class="modern-header">
         <div class="header-content">
-          <div class="left-section" @click="router.push('/')">
+          <div class="left-section" @click="navigate('/')">
             <span class="app-title">What Should I EAT?</span>
           </div>
 
@@ -81,17 +81,13 @@ watch(
             <el-menu mode="horizontal" :ellipsis="false" router class="modern-menu">
               <el-menu-item index="/">Home</el-menu-item>
               <el-menu-item index="/recipe">Explore</el-menu-item>
+              <el-menu-item index="/recomm">Recommend</el-menu-item>
             </el-menu>
           </div>
 
-          <div class="right-section">
+          <div class="right-section desktop-actions">
             <template v-if="userInfo.isLoggedIn">
-              <el-button
-                color="#4ea685"
-                class="create-btn"
-                round
-                @click="router.push('/recipe/create')"
-              >
+              <el-button color="#4ea685" class="create-btn" round @click="navigate('/recipe/create')">
                 <el-icon><Plus /></el-icon> Create Recipe
               </el-button>
 
@@ -105,7 +101,7 @@ watch(
 
                 <template #dropdown>
                   <el-dropdown-menu class="custom-dropdown">
-                    <el-dropdown-item @click="router.push('/profile')">
+                    <el-dropdown-item @click="navigate('/profile')">
                       <el-icon><User /></el-icon> My Profile
                     </el-dropdown-item>
                     <el-dropdown-item divided @click="handleLogout" class="logout-item">
@@ -117,10 +113,14 @@ watch(
             </template>
 
             <template v-else>
-              <el-button color="#4ea685" class="signup-btn" round @click="goToLogin">
-                Sign up
-              </el-button>
+              <el-button color="#4ea685" class="signup-btn" round @click="goToLogin">Sign up</el-button>
             </template>
+          </div>
+
+          <div class="mobile-nav-trigger">
+            <el-button class="menu-trigger" circle text @click="mobileNavOpen = true">
+              <el-icon :size="22"><Menu /></el-icon>
+            </el-button>
           </div>
         </div>
       </el-header>
@@ -131,116 +131,132 @@ watch(
         </div>
       </el-main>
     </el-container>
+
+    <el-drawer
+      v-model="mobileNavOpen"
+      direction="rtl"
+      size="280px"
+      :with-header="false"
+      class="mobile-drawer"
+    >
+      <div class="mobile-menu">
+        <div class="mobile-menu-title">Menu</div>
+
+        <el-button text class="mobile-link" @click="navigate('/')">Home</el-button>
+        <el-button text class="mobile-link" @click="navigate('/recipe')">Explore</el-button>
+        <el-button text class="mobile-link" @click="navigate('/recomm')">Recommend</el-button>
+
+        <div class="mobile-divider"></div>
+
+        <template v-if="userInfo.isLoggedIn">
+          <el-button class="mobile-link" text @click="navigate('/profile')">My Profile</el-button>
+          <el-button class="mobile-danger" text @click="handleLogout">Log Out</el-button>
+        </template>
+        <template v-else>
+          <el-button class="mobile-primary" color="#4ea685" round @click="goToLogin">Sign up</el-button>
+        </template>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <style scoped>
 .layout-container {
-  min-height: 100vh; /* 改用 min-height，防止内容多了之后截断 */
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f0f2f5;
 }
 
 .full-height {
-  height: 100%;
-  display: flex;
+  min-height: 100vh;
 }
 
-/* --- Header 修复 --- */
 .modern-header {
   padding: 0;
-  height: 64px;
-  /* 核心魔法：半透明白底 + 毛玻璃模糊效果 */
-  background-color: rgba(255, 255, 255, 0.85);
+  height: 68px;
+  background-color: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06); /* 极其微弱的底边线 */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
   z-index: 1000;
-  width: 100%;
 }
 
 .header-content {
-  max-width: 1400px; /* 限制最大宽度，在大屏幕上更好看 */
+  max-width: 1440px;
   margin: 0 auto;
   height: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 40px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px;
 }
 
-/* --- 左侧 Logo --- */
 .left-section {
   display: flex;
   align-items: center;
   cursor: pointer;
-}
-.app-title {
-  color: #4ea685; /* Logo用你的主题绿，反差感拉满 */
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: -0.5px; /* 现代字体喜欢稍微紧凑一点 */
+  min-width: fit-content;
 }
 
-/* --- 中间 导航 --- */
+.app-title {
+  color: #4ea685;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
 .center-section {
   flex: 1;
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
+
 .modern-menu {
   border-bottom: none !important;
   background-color: transparent !important;
 }
-/* 覆盖 Element Menu 的默认丑样式 */
+
 :deep(.el-menu-item) {
+  min-height: 48px;
   font-size: 16px;
   font-weight: 500;
-  color: #606266 !important; /* 默认灰黑色 */
+  color: #606266 !important;
   background-color: transparent !important;
-  transition: all 0.3s ease;
-}
-:deep(.el-menu-item:hover) {
-  color: #4ea685 !important; /* 悬浮变绿 */
-}
-:deep(.el-menu-item.is-active) {
-  color: #4ea685 !important;
-  font-weight: bold;
-  border-bottom: 3px solid #4ea685 !important; /* 底部绿色指示条 */
 }
 
-/* --- 右侧 用户区 --- */
+:deep(.el-menu-item:hover) {
+  color: #4ea685 !important;
+}
+
+:deep(.el-menu-item.is-active) {
+  color: #4ea685 !important;
+  font-weight: 700;
+  border-bottom: 3px solid #4ea685 !important;
+}
+
 .right-section {
   display: flex;
   align-items: center;
-  gap: 20px; /* 元素之间的呼吸间距 */
+  gap: 14px;
+  min-width: fit-content;
 }
 
-/* 按钮样式 */
 .create-btn,
 .signup-btn {
-  font-weight: bold;
-  box-shadow: 0 4px 10px rgba(78, 166, 133, 0.3); /* 专属绿色发光阴影 */
-  transition: transform 0.2s;
+  min-height: 44px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(78, 166, 133, 0.25);
+  transition: transform 0.2s ease;
 }
+
 .create-btn:hover,
 .signup-btn:hover {
-  transform: translateY(-2px); /* 悬浮轻微上浮 */
+  transform: translateY(-2px);
 }
 
-.login-text {
-  color: #606266;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.login-text:hover {
-  color: #4ea685;
-}
-
-/* 头像下拉框包裹器 */
 .avatar-wrapper {
   display: flex;
   align-items: center;
@@ -250,60 +266,115 @@ watch(
   border-radius: 50px;
   transition: background-color 0.2s;
 }
+
 .avatar-wrapper:hover {
-  background-color: #f0f2f5; /* 鼠标放上去有灰底反馈 */
+  background-color: #f0f2f5;
 }
+
 .dropdown-icon {
   color: #909399;
   font-size: 12px;
 }
 
-/* 下拉菜单内部样式定制 */
 .logout-item {
-  color: #f56c6c !important; /* 退出按钮标红更明显 */
+  color: #f56c6c !important;
 }
+
 .logout-item:hover {
   background-color: #fef0f0 !important;
 }
-/* ========================================================= */
 
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-weight: bold;
+.mobile-nav-trigger {
+  display: none;
 }
 
-.divider {
-  margin: 0 15px;
-  opacity: 0.5;
+.menu-trigger {
+  min-width: 44px;
+  min-height: 44px;
+  color: #2c3e50;
 }
 
-.action-btn {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.action-btn:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-/* --- Main Content --- */
 .main-bg {
-  background-color: #f0f2f5;
   padding: 0;
   display: flex;
   justify-content: center;
 }
 
 .content-wrapper {
-  width: 70%;
+  width: 100%;
+  max-width: 1280px;
   background-color: white;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  min-height: calc(100vh - 120px);
+  padding: 24px;
+  margin: 16px;
+  min-height: calc(100vh - 68px - 32px);
+}
+
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.mobile-menu-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.mobile-link {
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 0;
+  color: #2c3e50;
+}
+
+.mobile-primary {
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.mobile-danger {
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 0;
+  color: #f56c6c;
+}
+
+.mobile-divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 8px 0;
+}
+
+@media (max-width: 992px) {
+  .center-section,
+  .desktop-actions {
+    display: none;
+  }
+
+  .mobile-nav-trigger {
+    display: flex;
+    align-items: center;
+  }
+
+  .header-content {
+    padding: 0 12px;
+  }
+
+  .app-title {
+    font-size: 19px;
+  }
+
+  .content-wrapper {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 14px;
+    min-height: calc(100vh - 68px);
+  }
 }
 </style>

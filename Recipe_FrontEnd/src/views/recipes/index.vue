@@ -315,6 +315,7 @@ watch(
   background-image: linear-gradient(135deg, #4ea685 0%, #57b894 100%);
   padding: 30px 40px;
   color: white;
+  border-radius: 16px;
 }
 
 .panel-header {
@@ -487,6 +488,7 @@ watch(
   gap: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
+  min-height: 44px;
 }
 .search-btn:hover {
   transform: scale(1.05);
@@ -534,9 +536,94 @@ watch(
   box-shadow: 0 0 0 1px #a8eb12 inset;
 }
 
-/* 分页 */
-</style>
+@media (max-width: 992px) {
+  .search-panel {
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
 
+  .recipes-section {
+    padding: 0 10px;
+  }
+
+  .list-header {
+    margin-bottom: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-size: 20px;
+  }
+
+  .keyword-search-box {
+    margin-bottom: 12px;
+  }
+
+  .ingredient-tags-area {
+    margin-bottom: 20px;
+  }
+
+  .search-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .left-spacer {
+    display: none;
+  }
+
+  .list-title {
+    text-align: left;
+    font-size: 22px;
+  }
+
+  .sort-control {
+    justify-content: flex-start;
+  }
+
+  .sort-select {
+    width: 100%;
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-panel {
+    padding: 18px 14px;
+  }
+
+  .clear-btn {
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
+  .panel-header {
+    margin-bottom: 14px;
+  }
+
+  .ingredient-tags-area {
+    gap: 6px;
+  }
+
+  .tag-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+</style>
 
 
 

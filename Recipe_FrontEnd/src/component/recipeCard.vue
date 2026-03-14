@@ -161,8 +161,8 @@ const getDifficultyType = (diff) => {
   position: absolute;
   top: 12px;
   right: 12px;
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px); /* 苹果风毛玻璃 */
@@ -262,5 +262,25 @@ const getDifficultyType = (diff) => {
   color: #4ea685;
   background-color: #eef7f4;
   border-color: #d5ebe1;
+}
+
+@media (max-width: 768px) {
+  .card-body {
+    padding: 14px 14px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .meta-row {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .floating-like-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

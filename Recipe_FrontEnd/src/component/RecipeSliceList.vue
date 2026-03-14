@@ -291,4 +291,17 @@ watch(
   color: #999;
   font-size: 14px;
 }
+
+@media (max-width: 768px) {
+  .slice-footer {
+    margin-top: 12px;
+    padding-bottom: 10px;
+  }
+
+  .slice-load-more-btn {
+    width: 100%;
+    max-width: 280px;
+    min-height: 44px;
+  }
+}
 </style>

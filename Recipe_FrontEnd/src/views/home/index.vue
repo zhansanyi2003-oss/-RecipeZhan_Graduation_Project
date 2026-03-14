@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 // 假设你之前写好的食谱卡片组件在这里引入
@@ -16,11 +16,60 @@ const recommendedRecipes = ref([])
 // 2. 模拟：最新发布的普通食谱 (可以复用你的 RecipeCard)
 // 这里随便塞几条假数据占位，后期接后端接口
 const trendingRecipes = ref([
-  { id: 101, title: 'Spaghetti', difficulty: 'EASY', time: '20 min', likes: 120 },
-  { id: 102, title: '黑椒牛排', difficulty: 'MEDIUM', time: '25 min', likes: 340 },
-  { id: 103, title: 'Mushroom Soup', difficulty: 'EASY', time: '15 min', likes: 89 },
-  { id: 104, title: 'Caesar Salad', difficulty: 'EASY', time: '10 min', likes: 210 },
+  {
+    id: 101,
+    title: 'Spaghetti',
+    coverImage:
+      'https://images.unsplash.com/photo-1521389508051-d7ffb5dc8e5c?auto=format&fit=crop&w=1200&q=80',
+    difficulty: 'EASY',
+    cookingTimeMin: 20,
+    averageRating: 4.3,
+    ratingCount: 120,
+    isLiked: false,
+  },
+  {
+    id: 102,
+    title: 'Black Pepper Steak',
+    coverImage:
+      'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
+    difficulty: 'MEDIUM',
+    cookingTimeMin: 25,
+    averageRating: 4.6,
+    ratingCount: 340,
+    isLiked: false,
+  },
+  {
+    id: 103,
+    title: 'Mushroom Soup',
+    coverImage:
+      'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?auto=format&fit=crop&w=1200&q=80',
+    difficulty: 'EASY',
+    cookingTimeMin: 15,
+    averageRating: 4.1,
+    ratingCount: 89,
+    isLiked: false,
+  },
+  {
+    id: 104,
+    title: 'Caesar Salad',
+    coverImage:
+      'https://images.unsplash.com/photo-1551248429-40975aa4de74?auto=format&fit=crop&w=1200&q=80',
+    difficulty: 'EASY',
+    cookingTimeMin: 10,
+    averageRating: 4.4,
+    ratingCount: 210,
+    isLiked: false,
+  },
 ])
+
+const viewportWidth = ref(window.innerWidth)
+const isMobile = computed(() => viewportWidth.value < 768)
+const carouselType = computed(() => (isMobile.value ? '' : 'card'))
+const carouselHeight = computed(() => (isMobile.value ? '220px' : '340px'))
+
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth
+}
 
 // 3. 首页大搜索框触发的方法
 const handleHeroSearch = () => {
@@ -40,6 +89,11 @@ const getCarouselCard = async () => {
 }
 onMounted(() => {
   getCarouselCard()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -81,7 +135,12 @@ onMounted(() => {
           ></span>
         </div>
 
-        <el-carousel :interval="4000" type="card" height="340px" class="custom-carousel">
+        <el-carousel
+          :interval="4000"
+          :type="carouselType"
+          :height="carouselHeight"
+          class="custom-carousel"
+        >
           <el-carousel-item v-for="item in recommendedRecipes" :key="item.id">
             <div
               class="carousel-card"
@@ -303,5 +362,82 @@ onMounted(() => {
 }
 .ml-2 {
   margin-left: 8px;
+}
+
+@media (max-width: 992px) {
+  .hero-section {
+    height: 420px;
+  }
+
+  .hero-title {
+    font-size: 2.6rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-page {
+    padding-bottom: 36px;
+  }
+
+  .hero-section {
+    height: 360px;
+    margin-bottom: 24px;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 22px;
+  }
+
+  .hero-search-box {
+    border-radius: 14px;
+  }
+
+  :deep(.massive-input .el-input__wrapper) {
+    padding: 6px 12px;
+    font-size: 16px;
+  }
+
+  .search-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    font-size: 1rem;
+  }
+
+  .main-container {
+    padding: 0 12px;
+  }
+
+  .section-header {
+    margin-top: 26px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .card-info h3 {
+    font-size: 1.15rem;
+  }
+
+  .card-meta {
+    font-size: 0.85rem;
+    gap: 10px;
+  }
+
+  .explore-btn {
+    width: 100%;
+    padding: 16px 18px;
+    font-size: 1rem;
+  }
 }
 </style>

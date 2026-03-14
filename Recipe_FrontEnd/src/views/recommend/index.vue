@@ -1,20 +1,15 @@
 <script setup>
 import { ref } from 'vue'
+import { Avatar, Bowl, Clock, Setting, Star } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 
 // 同样，记得引入你的食谱卡片组件！
 import RecipeCard from '../../component/recipeCard.vue'
-
 const router = useRouter()
 
 // 模拟打开口味偏好设置 (后期可以接一个真实的抽屉或弹窗)
 const openPreferences = () => {
-  ElMessage({
-    message: 'Opening preferences setting panel...',
-    type: 'success',
-    icon: Setting,
-  })
+  router.push({ path: '/profile', query: { tab: 'preferences' } })
 }
 
 // ================== 模拟：按推荐理由分类的数据 ==================
@@ -24,34 +19,46 @@ const seasonalRecipes = ref([
   {
     id: 201,
     title: 'Spring Asparagus Salad',
+    coverImage:
+      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '15 min',
-    likes: 890,
-    image: '...',
+    cookingTimeMin: 15,
+    averageRating: 4.5,
+    ratingCount: 890,
+    isLiked: false,
   },
   {
     id: 202,
     title: 'Strawberry Shortcake',
+    coverImage:
+      'https://images.unsplash.com/photo-1464306076886-da185f6a9d05?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'MEDIUM',
-    time: '40 min',
-    likes: 654,
-    image: '...',
+    cookingTimeMin: 40,
+    averageRating: 4.2,
+    ratingCount: 654,
+    isLiked: false,
   },
   {
     id: 203,
     title: 'Lemon Garlic Salmon',
+    coverImage:
+      'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '20 min',
-    likes: 1023,
-    image: '...',
+    cookingTimeMin: 20,
+    averageRating: 4.7,
+    ratingCount: 1023,
+    isLiked: false,
   },
   {
     id: 204,
     title: 'Green Pea Soup',
+    coverImage:
+      'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '25 min',
-    likes: 432,
-    image: '...',
+    cookingTimeMin: 25,
+    averageRating: 4.1,
+    ratingCount: 432,
+    isLiked: false,
   },
 ])
 
@@ -60,34 +67,46 @@ const basedOnSaves = ref([
   {
     id: 301,
     title: 'Creamy Mushroom Pasta',
+    coverImage:
+      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'MEDIUM',
-    time: '30 min',
-    likes: 2100,
-    image: '...',
+    cookingTimeMin: 30,
+    averageRating: 4.8,
+    ratingCount: 2100,
+    isLiked: false,
   },
   {
     id: 302,
     title: 'Garlic Butter Shrimp',
+    coverImage:
+      'https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '15 min',
-    likes: 1800,
-    image: '...',
+    cookingTimeMin: 15,
+    averageRating: 4.7,
+    ratingCount: 1800,
+    isLiked: false,
   },
   {
     id: 303,
     title: 'Classic Lasagna',
+    coverImage:
+      'https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'HARD',
-    time: '90 min',
-    likes: 3200,
-    image: '...',
+    cookingTimeMin: 90,
+    averageRating: 4.9,
+    ratingCount: 3200,
+    isLiked: false,
   },
   {
     id: 304,
     title: 'Truffle Risotto',
+    coverImage:
+      'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'MEDIUM',
-    time: '45 min',
-    likes: 950,
-    image: '...',
+    cookingTimeMin: 45,
+    averageRating: 4.4,
+    ratingCount: 950,
+    isLiked: false,
   },
 ])
 
@@ -96,34 +115,46 @@ const quickRecipes = ref([
   {
     id: 401,
     title: 'Avocado Egg Toast',
+    coverImage:
+      'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '5 min',
-    likes: 5000,
-    image: '...',
+    cookingTimeMin: 5,
+    averageRating: 4.9,
+    ratingCount: 5000,
+    isLiked: false,
   },
   {
     id: 402,
     title: 'Tomato Basil Bruschetta',
+    coverImage:
+      'https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '10 min',
-    likes: 1200,
-    image: '...',
+    cookingTimeMin: 10,
+    averageRating: 4.6,
+    ratingCount: 1200,
+    isLiked: false,
   },
   {
     id: 403,
     title: '10-Min Chicken Tacos',
+    coverImage:
+      'https://images.unsplash.com/photo-1613514785940-daed07799d9b?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '10 min',
-    likes: 3400,
-    image: '...',
+    cookingTimeMin: 10,
+    averageRating: 4.8,
+    ratingCount: 3400,
+    isLiked: false,
   },
   {
     id: 404,
     title: 'Fruit Smoothie Bowl',
+    coverImage:
+      'https://images.unsplash.com/photo-1494597564530-871f2b93ac55?auto=format&fit=crop&w=1200&q=80',
     difficulty: 'EASY',
-    time: '5 min',
-    likes: 2800,
-    image: '...',
+    cookingTimeMin: 5,
+    averageRating: 4.7,
+    ratingCount: 2800,
+    isLiked: false,
   },
 ])
 </script>
@@ -281,9 +312,6 @@ const quickRecipes = ref([
 .pref-btn:hover {
   transform: translateY(-2px);
 }
-.mr-1 {
-  margin-right: 6px;
-}
 
 /* ================= 分类卡片区 ================= */
 .recomm-section {
@@ -318,10 +346,69 @@ const quickRecipes = ref([
 
 /* 响应式调整横幅 */
 @media (max-width: 768px) {
+  .recomm-page {
+    padding: 20px 0 40px 0;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
   .engine-banner {
     flex-direction: column;
     align-items: flex-start;
-    gap: 20px;
+    gap: 14px;
+    padding: 16px 14px;
+    margin-bottom: 28px;
+  }
+
+  .banner-left {
+    width: 100%;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .icon-wrapper {
+    width: 44px;
+    height: 44px;
+  }
+
+  .banner-text {
+    width: 100%;
+  }
+
+  .banner-text h2 {
+    margin-bottom: 8px;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .banner-text p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .banner-right {
+    width: 100%;
+  }
+
+  .pref-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .title-group h2 {
+    font-size: 1.2rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .recomm-section {
+    margin-bottom: 30px;
   }
 }
 </style>

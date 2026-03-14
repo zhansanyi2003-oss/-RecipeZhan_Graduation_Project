@@ -202,7 +202,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             }
 
             // 3. 烹饪时间限制 (Time) -> 小于等于用户设定的时间 (Filter Range)
-            if (prefs.getTimeAvailability() != null && !prefs.getTimeAvailability().equals("999")) {
+            if (prefs.getTimeAvailability() != null  && !prefs.getTimeAvailability().equals("") && !prefs.getTimeAvailability().equals("999")) {
                 int maxTime = Integer.parseInt(prefs.getTimeAvailability());
                 boolBuilder.filter(f -> f.range(r -> r.field("cookingTimeMin").lte(co.elastic.clients.json.JsonData.of(maxTime))));
             }

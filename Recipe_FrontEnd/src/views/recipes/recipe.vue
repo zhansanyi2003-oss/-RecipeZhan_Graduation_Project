@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Timer, Location, KnifeFork } from '@element-plus/icons-vue'
@@ -84,6 +84,48 @@ const getDifficultyColor = (difficulty) => {
   return '#409EFF'
 }
 
+const normalizeTagList = (value) => {
+  if (!Array.isArray(value)) return []
+  return value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
+}
+
+const recipeTagGroups = computed(() => {
+  if (!recipe.value) return []
+
+  return [
+    {
+      key: 'cuisines',
+      label: 'Cuisine',
+      icon: Location,
+      theme: 'cuisine',
+      values: normalizeTagList(recipe.value.cuisines),
+    },
+    {
+      key: 'courses',
+      label: 'Course',
+      icon: KnifeFork,
+      theme: 'course',
+      values: normalizeTagList(recipe.value.courses),
+    },
+    {
+      key: 'flavours',
+      label: 'Flavour',
+      icon: null,
+      theme: 'flavour',
+      values: normalizeTagList(recipe.value.flavours),
+    },
+    {
+      key: 'dietTypes',
+      label: 'Diet',
+      icon: null,
+      theme: 'diet',
+      values: normalizeTagList(recipe.value.dietTypes ?? recipe.value.diets),
+    },
+  ].filter((group) => group.values.length > 0)
+})
+
+const hasRecipeTags = computed(() => recipeTagGroups.value.length > 0)
+
 onMounted(() => {
   const recipeId = route.params.id
   getRecipe(recipeId)
@@ -141,32 +183,32 @@ onMounted(() => {
               </div>
             </div>
 
-            <div
-              class="meta-row categories"
-              v-if="
-                (recipe.cuisines && recipe.cuisines.length) ||
-                (recipe.courses && recipe.courses.length)
-              "
-            >
-              <el-tag
-                v-for="c in recipe.cuisines"
-                :key="c"
-                size="large"
-                color="#eef7f4"
-                class="meta-tag big-tag"
+            <div class="meta-row categories" v-if="hasRecipeTags">
+              <div
+                v-for="group in recipeTagGroups"
+                :key="group.key"
+                class="tag-group"
+                :class="`tag-group--${group.theme}`"
               >
-                <el-icon :size="18"><Location /></el-icon> {{ c }}
-              </el-tag>
-              <el-tag
-                v-for="c in recipe.courses"
-                :key="c"
-                size="large"
-                color="#fff3e0"
-                class="meta-tag big-tag"
-                style="color: #e6a23c; border-color: #fde2e2"
-              >
-                <el-icon :size="18"><KnifeFork /></el-icon> {{ c }}
-              </el-tag>
+                <span class="group-head">
+                  <el-icon v-if="group.icon" :size="14" class="group-icon">
+                    <component :is="group.icon" />
+                  </el-icon>
+                  {{ group.label }}
+                </span>
+
+                <div class="group-tags">
+                  <el-tag
+                    v-for="(value, idx) in group.values"
+                    :key="`${group.key}-${idx}-${value}`"
+                    size="large"
+                    class="meta-tag big-tag"
+                    :class="`tag-${group.theme}`"
+                  >
+                    {{ value }}
+                  </el-tag>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -342,11 +384,103 @@ onMounted(() => {
   font-weight: 700;
   font-size: 16px;
 }
-.categories .big-tag {
-  font-weight: 600;
-  font-size: 15px;
-  padding: 18px 16px;
-  border: none;
+
+.categories {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #d5ebe1;
+  border-radius: 14px;
+  background: #eef7f4;
+}
+
+.tag-group {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: start;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #edf1f5;
+}
+
+.tag-group:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.group-icon {
+  flex-shrink: 0;
+}
+
+.group-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meta-tag.big-tag {
+  font-weight: 700;
+  font-size: 14px;
+  height: 38px;
+  line-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border-width: 1px;
+  border-style: solid;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
+}
+
+.tag-group--cuisine .group-head {
+  color: #1f6b4f;
+}
+
+.tag-group--course .group-head {
+  color: #9a3412;
+}
+
+.tag-group--flavour .group-head {
+  color: #1d4ed8;
+}
+
+.tag-group--diet .group-head {
+  color: #334155;
+}
+
+.tag-cuisine {
+  color: #1f6b4f;
+  border-color: #bfe6d2;
+  background: #eef9f3;
+}
+
+.tag-course {
+  color: #9a3412;
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.tag-flavour {
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.tag-diet {
+  color: #334155;
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 /* ================= 底部：食材面板 ================= */
@@ -446,6 +580,13 @@ onMounted(() => {
   color: #444;
   margin-bottom: 15px;
 }
+
+.step-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .step-img {
   width: 220px;
   height: 160px;
@@ -487,6 +628,88 @@ onMounted(() => {
   .ingredients-panel {
     position: static;
     margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .recipe-detail-page {
+    padding: 20px 10px 40px 10px;
+  }
+
+  .title {
+    font-size: 30px;
+    line-height: 1.25;
+  }
+
+  .primary-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .categories {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .tag-group {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    width: 100%;
+    padding-bottom: 8px;
+  }
+
+  .group-tags {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .group-head {
+    min-height: 0;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .meta-tag.big-tag {
+    height: 34px;
+    line-height: 34px;
+    font-size: 13px;
+    padding: 0 12px;
+  }
+
+  .step-item {
+    gap: 14px;
+    margin-bottom: 30px;
+    flex-direction: column;
+  }
+
+  .step-number {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .step-text {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .step-img {
+    width: 100%;
+    max-width: 320px;
+    height: 180px;
+  }
+
+  .full-width-rating-panel {
+    margin-top: 36px;
+    padding: 30px 14px;
+  }
+
+  .full-width-rating-panel h3 {
+    font-size: 22px;
+  }
+
+  :deep(.massive-rate .el-rate__icon) {
+    font-size: 32px;
   }
 }
 </style>
