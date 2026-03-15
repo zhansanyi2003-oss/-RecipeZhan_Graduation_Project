@@ -20,7 +20,7 @@ public class UserController {
     @Autowired
     private UploadFileService uploadFileService;
     @GetMapping("/myRecipe")
-    public Result getMyRecipe(@RequestParam(defaultValue = "1") Integer page,
+    public Result getMyRecipe(@RequestParam(defaultValue = "0") Integer page,
                               @RequestParam(defaultValue = "12") Integer pageSize) {
 
         return  Result.Success(userService.getMyRecipe(page,pageSize));
@@ -34,7 +34,7 @@ public class UserController {
     }
 
     @GetMapping("/saved")
-    public Result getSavedRecipe(@RequestParam(defaultValue = "1") Integer page,
+    public Result getSavedRecipe(@RequestParam(defaultValue = "0") Integer page,
                                  @RequestParam(defaultValue = "12") Integer pageSize) {
         return Result.Success(userService.getSavedRecipe(page,pageSize));
     }

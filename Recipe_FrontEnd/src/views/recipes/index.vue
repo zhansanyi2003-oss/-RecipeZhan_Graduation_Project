@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, watch } from 'vue'
 import RecipeSliceList from '../../component/RecipeSliceList.vue'
 import { getRecipeCardApi } from '../../api/recipeCard'
@@ -38,7 +38,11 @@ const searchRecipe = ref(defaultSearchState())
 
 const normalizeStringArray = (value) => {
   if (Array.isArray(value)) return value
-  if (typeof value === 'string' && value.trim()) return value.split(',').map((v) => v.trim()).filter(Boolean)
+  if (typeof value === 'string' && value.trim())
+    return value
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
   return []
 }
 
@@ -170,9 +174,20 @@ const getCuisines = async () => {
   }
 }
 
+const initSearchState = () => {
+  const keyword = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
+
+  if (keyword) {
+    searchRecipe.value.title = keyword // 搜索框显示首页输入
+    return // 不让旧 session 覆盖
+  }
+
+  loadSearchState() // 只有没 keyword 才恢复 session
+}
+
 // 8. 页面加载：拉取动态选项 & 初始化列表
 onMounted(() => {
-  loadSearchState()
+  initSearchState()
   getFlavours()
   getCuisines()
   sliceReady.value = true
@@ -294,6 +309,7 @@ watch(
         :fetch-page="fetchRecipePage"
         :reload-key="sliceReloadKey"
         :enabled="sliceReady"
+        :xl="6"
         @items-change="handleSliceItemsChange"
       />
     </div>
@@ -315,6 +331,7 @@ watch(
   background-image: linear-gradient(135deg, #4ea685 0%, #57b894 100%);
   padding: 30px 40px;
   color: white;
+  border-radius: 16px;
 }
 
 .panel-header {
@@ -487,6 +504,7 @@ watch(
   gap: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s;
+  min-height: 44px;
 }
 .search-btn:hover {
   transform: scale(1.05);
@@ -534,9 +552,91 @@ watch(
   box-shadow: 0 0 0 1px #a8eb12 inset;
 }
 
-/* 分页 */
+@media (max-width: 992px) {
+  .search-panel {
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
+
+  .recipes-section {
+    padding: 0 10px;
+  }
+
+  .list-header {
+    margin-bottom: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-size: 20px;
+  }
+
+  .keyword-search-box {
+    margin-bottom: 12px;
+  }
+
+  .ingredient-tags-area {
+    margin-bottom: 20px;
+  }
+
+  .search-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .left-spacer {
+    display: none;
+  }
+
+  .list-title {
+    text-align: left;
+    font-size: 22px;
+  }
+
+  .sort-control {
+    justify-content: flex-start;
+  }
+
+  .sort-select {
+    width: 100%;
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-panel {
+    padding: 18px 14px;
+  }
+
+  .clear-btn {
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
+  .panel-header {
+    margin-bottom: 14px;
+  }
+
+  .ingredient-tags-area {
+    gap: 6px;
+  }
+
+  .tag-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
 </style>
-
-
-
-

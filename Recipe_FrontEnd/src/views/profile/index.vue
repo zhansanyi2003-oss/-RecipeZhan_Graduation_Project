@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Edit, Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import RecipeCard from '../../component/recipeCard.vue'
 import RecipeSliceList from '../../component/RecipeSliceList.vue'
 
@@ -18,6 +18,7 @@ import {
 import { getAllCuisinesApi, getAllFlavoursApi, getAllIngredientsApi } from '../../api/recipeCard'
 
 const activeTab = ref('myRecipes')
+const route = useRoute()
 
 const userInfo = ref({
   username: '',
@@ -172,6 +173,13 @@ const handleTabChange = (tabName) => {
   }
 }
 
+const applyRouteTab = () => {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : ''
+  if (tab === 'myRecipes' || tab === 'savedRecipes' || tab === 'preferences') {
+    activeTab.value = tab
+  }
+}
+
 const goToEditRecipe = (id) => {
   router.push(`/recipe/edit/${id}`)
 }
@@ -185,8 +193,18 @@ const handleMyRecipesStateChange = (state) => {
 }
 
 onMounted(() => {
+  applyRouteTab()
   getUserInfo()
+  handleTabChange(activeTab.value)
 })
+
+watch(
+  () => route.query.tab,
+  () => {
+    applyRouteTab()
+    handleTabChange(activeTab.value)
+  },
+)
 </script>
 
 <template>
@@ -250,6 +268,13 @@ onMounted(() => {
     <div class="profile-content">
       <el-tabs v-model="activeTab" class="modern-tabs" @tab-change="handleTabChange">
         <el-tab-pane label="My Recipes" name="myRecipes">
+          <div class="mobile-myrecipe-create">
+            <el-button color="#4ea685" class="mobile-create-btn" round @click="router.push('/recipe/create')">
+              <el-icon><Plus /></el-icon>
+              <span style="margin-left: 6px">Create New Recipe</span>
+            </el-button>
+          </div>
+
           <RecipeSliceList
             ref="myRecipeSliceRef"
             :fetch-page="fetchMyRecipesPage"
@@ -277,7 +302,7 @@ onMounted(() => {
                 :md="8"
                 :lg="6"
                 :xl="6"
-                class="create-recipe-col"
+                class="create-recipe-col desktop-create-card"
                 :class="{ 'only-create-col': myRecipeCount === 0 }"
               >
                 <div class="create-recipe-item">
@@ -649,37 +674,21 @@ onMounted(() => {
   pointer-events: none;
 }
 
+.mobile-myrecipe-create {
+  display: none;
+}
+
+.mobile-create-btn {
+  width: 100%;
+  min-height: 44px;
+  font-weight: 700;
+}
+
 .empty-state-container {
   width: 100%;
   display: flex;
   justify-content: center;
   padding: 40px 0;
-}
-
-.pagination-footer {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 30px 0 10px 0;
-  margin-top: 10px;
-}
-
-.load-more-btn {
-  width: 200px;
-  font-weight: bold;
-  color: #4ea685;
-  border-color: #d5ebe1;
-}
-
-.load-more-btn:hover {
-  background-color: #eef7f4;
-  border-color: #4ea685;
-}
-
-.no-more-text {
-  font-size: 14px;
-  color: #c0c4cc;
-  margin: 0;
 }
 
 /* ================= 🌟 爆改的 Tab 3: Preferences ================= */
@@ -718,6 +727,19 @@ onMounted(() => {
   margin-bottom: 30px;
 }
 
+/* Make option groups wrap naturally and keep even spacing */
+:deep(.pref-form .el-radio-group),
+:deep(.pref-form .el-checkbox-group) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+:deep(.pref-form .el-radio-button),
+:deep(.pref-form .el-checkbox-button) {
+  margin: 0;
+}
+
 /* ================= 🌟 高级定制：美化多选下拉框的 Tags ================= */
 
 /* 让下拉框本身看起来更高级、更像一个搜索栏 */
@@ -730,8 +752,10 @@ onMounted(() => {
 :deep(.el-checkbox-button__inner) {
   border-radius: 8px !important;
   border: 1px solid #dcdfe6 !important;
-  margin-right: 10px;
-  margin-bottom: 10px;
+  margin: 0;
+  min-height: 40px;
+  line-height: 38px;
+  padding: 0 16px;
   box-shadow: none !important;
   transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
@@ -805,6 +829,10 @@ onMounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .profile-page {
+    padding: 20px 10px;
+  }
+
   .profile-header-card {
     flex-direction: column;
     text-align: center;
@@ -823,12 +851,109 @@ onMounted(() => {
   .profile-content {
     padding: 15px;
   }
-  .preferences-panel {
-    padding: 20px;
+
+  :deep(.modern-tabs .el-tabs__nav-wrap) {
+    overflow-x: auto;
   }
+
+  :deep(.modern-tabs .el-tabs__item) {
+    font-size: 15px;
+    height: 48px;
+    line-height: 48px;
+    padding: 0 12px;
+  }
+
+  .preferences-panel {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+
+  .pref-header {
+    text-align: left;
+    margin-bottom: 24px;
+  }
+
+  .pref-title {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .pref-desc {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  :deep(.pref-form .el-form-item) {
+    margin-bottom: 22px;
+  }
+
+  :deep(.pref-form .el-form-item__label) {
+    font-size: 14px;
+    line-height: 1.4;
+    padding-bottom: 8px;
+  }
+
+  :deep(.pref-form .el-radio-group),
+  :deep(.pref-form .el-checkbox-group) {
+    gap: 8px;
+    width: 100%;
+  }
+
+  :deep(.pref-form .el-radio-button),
+  :deep(.pref-form .el-checkbox-button) {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 132px;
+    max-width: 100%;
+  }
+
+  :deep(.pref-form .el-radio-button__inner),
+  :deep(.pref-form .el-checkbox-button__inner) {
+    width: 100%;
+    height: 42px;
+    line-height: 40px;
+    padding: 0 10px;
+    font-size: 14px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .form-actions {
+    margin-top: 28px;
+    flex-direction: column-reverse;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .save-pref-btn,
+  .reset-pref-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  .desktop-create-card {
+    display: none !important;
+  }
+
+  .mobile-myrecipe-create {
+    display: block;
+    margin: 4px 0 14px 0;
+  }
+
   .create-recipe-col.only-create-col {
     margin-left: 0;
     margin-right: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  :deep(.pref-form .el-radio-button),
+  :deep(.pref-form .el-checkbox-button) {
+    flex: 1 1 100%;
+    min-width: 100%;
   }
 }
 </style>

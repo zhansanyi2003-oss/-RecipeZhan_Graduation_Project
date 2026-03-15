@@ -53,7 +53,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
     @Autowired
     private RecipeRepository recipeRepository;
 
-    public Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int size) {
+    public Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int pageSize) {
 
         BoolQuery.Builder filterBool = new BoolQuery.Builder();
 
@@ -119,7 +119,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
         // ==========================================
         Query q = Query.of(b -> b.bool(filterBool.build()));
 
-        Pageable pageable = PageRequest.of(page - 1, size);
+        Pageable pageable = PageRequest.of(page , pageSize+1);
 
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(q)
@@ -134,8 +134,10 @@ public class RecipeCardServiceImpl implements RecipeCardService {
         List<RecipeCardDto> cardDtoList = DocToDto(searchHits);
 
         // Check for next page
-        boolean hasNext = cardDtoList.size() == pageable.getPageSize();
-        return new SliceImpl<>(cardDtoList, pageable, hasNext);
+        boolean hasNext = cardDtoList.size() > pageSize;
+        List<RecipeCardDto> content = hasNext ? cardDtoList.subList(0, pageSize) : cardDtoList;
+        Pageable resultPageable = PageRequest.of(page, pageSize);
+        return new SliceImpl<>(content, resultPageable, hasNext);
     }
 
     private List<RecipeCardDto>  DocToDto( SearchHits<RecipeDoc> searchHits)
@@ -177,7 +179,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         if (currentUserId == null) {
 
-            return   getGuestRecommendations();
+            return  getGuestRecommendations();
         }
         else {
             UserPreferenceDto prefs = userService.getUserPreferences();
@@ -202,7 +204,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             }
 
             // 3. 烹饪时间限制 (Time) -> 小于等于用户设定的时间 (Filter Range)
-            if (prefs.getTimeAvailability() != null && !prefs.getTimeAvailability().equals("999")) {
+            if (prefs.getTimeAvailability() != null  && !prefs.getTimeAvailability().equals("") && !prefs.getTimeAvailability().equals("999")) {
                 int maxTime = Integer.parseInt(prefs.getTimeAvailability());
                 boolBuilder.filter(f -> f.range(r -> r.field("cookingTimeMin").lte(co.elastic.clients.json.JsonData.of(maxTime))));
             }
@@ -336,6 +338,67 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
     }
 
+    @Override
+    public Slice<RecipeCardDto> getTrendingRecipes(int page , int pageSize) {
+
+
+
+        List<FunctionScore> functions = new ArrayList<>();
+        Pageable fetchPageable = PageRequest.of(page, pageSize + 1);
+        // 评分高更靠前
+        functions.add(FunctionScore.of(fs -> fs
+                .fieldValueFactor(fvf -> fvf
+                        .field("averageRating")
+                        .factor(1.4)
+                        .missing(3.0)
+                )
+        ));
+
+        // 评分人数多更靠前（log防止大数碾压）
+        functions.add(FunctionScore.of(fs -> fs
+                .fieldValueFactor(fvf -> fvf
+                        .field("ratingCount")
+                        .factor(0.6)
+                        .missing(0.0)
+                        .modifier(FieldValueFactorModifier.Log1p)
+                )
+        ));
+
+        // 新鲜度加成（越新分越高）
+        functions.add(FunctionScore.of(fs -> fs
+                .gauss(g -> g
+                        .field("createdAt")
+                        .placement(p -> p
+                                .origin(JsonData.of("now"))
+                                .scale(JsonData.of("30d"))
+                                .offset(JsonData.of("3d"))
+                                .decay(0.5)
+                        )
+                )
+        ));
+
+        Query finalQuery = Query.of(q -> q.functionScore(fsq -> fsq
+                .query(m -> m.matchAll(ma -> ma))
+                .functions(functions)
+                .scoreMode(FunctionScoreMode.Sum)
+                .boostMode(FunctionBoostMode.Sum)
+        ));
+
+        NativeQuery nativeQuery = NativeQuery.builder()
+                .withQuery(finalQuery)
+                .withPageable(fetchPageable)
+                .build();
+
+        SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);
+        List<RecipeCardDto> cardDtoList = DocToDto(searchHits);
+
+        boolean hasNext = cardDtoList.size() > pageSize;
+        List<RecipeCardDto> content = hasNext ? cardDtoList.subList(0, pageSize) : cardDtoList;
+        Pageable resultPageable = PageRequest.of(page, pageSize);
+        return new SliceImpl<>(content, resultPageable, hasNext);
+
+
+    }
 
 
     @Override

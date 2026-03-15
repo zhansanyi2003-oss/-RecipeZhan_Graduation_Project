@@ -19,6 +19,8 @@ body {
   height: 100%;
   width: 100%;
   overflow-x: hidden; /* ✅ 关键：强制禁止左右横向滚动 */
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
   font-family:
     'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial,
     sans-serif;
@@ -27,6 +29,7 @@ body {
 
 #app {
   height: 100%;
+  min-height: 100%;
 }
 
 a {

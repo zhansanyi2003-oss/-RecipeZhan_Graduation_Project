@@ -251,19 +251,6 @@ onMounted(async () => {
     <div class="sticky-header">
       <div class="header-content">
         <h2 class="page-title">{{ pageTitle }}</h2>
-        <div class="actions">
-          <el-button plain round @click="router.back()">Cancel</el-button>
-          <el-button
-            color="#4ea685"
-            round
-            size="large"
-            @click="submitRecipe"
-            :loading="submitting"
-            class="publish-btn"
-          >
-            {{ submitButtonText }}
-          </el-button>
-        </div>
       </div>
     </div>
 
@@ -554,6 +541,20 @@ onMounted(async () => {
           </el-row>
         </div>
       </el-form>
+
+      <div class="form-end-actions">
+        <el-button plain round class="bottom-cancel-btn" @click="router.back()">Cancel</el-button>
+        <el-button
+          color="#4ea685"
+          round
+          size="large"
+          @click="submitRecipe"
+          :loading="submitting"
+          class="publish-btn bottom-publish-btn"
+        >
+          {{ submitButtonText }}
+        </el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -562,7 +563,7 @@ onMounted(async () => {
 .create-page-wrapper {
   background-color: #f9fafb;
   min-height: 100vh;
-  padding-bottom: 100px;
+  padding-bottom: 40px;
 }
 
 /* ================= ć‚¬ćµ®ĺ¸éˇ¶ Header ================= */
@@ -591,6 +592,20 @@ onMounted(async () => {
 }
 .publish-btn {
   font-weight: bold;
+}
+
+.form-end-actions {
+  margin-top: 8px;
+  padding: 12px 0 4px 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+  .bottom-cancel-btn,
+  .bottom-publish-btn {
+  min-height: 44px;
+  font-weight: 700;
 }
 
 .create-container {
@@ -913,5 +928,68 @@ onMounted(async () => {
     height: 240px;
   }
 }
-</style>
 
+@media (max-width: 768px) {
+  .sticky-header {
+    padding: 10px 0;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .create-container {
+    margin: 16px auto;
+    padding: 0 10px;
+  }
+
+  .meta-card {
+    padding: 18px 14px;
+    margin-bottom: 20px;
+  }
+
+  :deep(.title-input .el-input__inner) {
+    font-size: 18px;
+  }
+
+  .modern-list-item {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .delete-btn {
+    opacity: 1;
+  }
+
+  .step-image-area {
+    margin-left: 0;
+  }
+
+  .step-uploader,
+  .step-img-placeholder,
+  .step-img-preview {
+    width: 96px;
+    height: 96px;
+  }
+
+  .form-end-actions {
+    padding: 6px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-end-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .add-btn {
+    min-height: 44px;
+  }
+
+  .modern-list-item {
+    flex-wrap: wrap;
+  }
+}
+</style>

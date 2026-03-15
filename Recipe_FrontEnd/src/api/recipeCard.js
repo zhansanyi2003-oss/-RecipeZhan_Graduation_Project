@@ -21,3 +21,7 @@ export const getCarouselCardApi = () => {
     },
   })
 }
+
+export const getTrendingRecipesApi = (page, pageSize) => {
+  return request.get(`/recipes/trending?page=${page}&pageSize=${pageSize}`)
+}

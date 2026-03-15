@@ -285,11 +285,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 🌟 核心提示：
-你的 CSS 代码我一行都没动，因为它写得非常好。
-建议在 <style> 标签上加上 scoped，防止这里的全局样式（比如 body { height: 100vh }）
-影响到你项目里的其他页面。
-*/
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600&display=swap');
 
 .container {
   --primary-color: #4ea685;
@@ -298,9 +294,10 @@ onMounted(() => {
   --white: #ffffff;
   --gray: #efefef;
   --gray-2: #757575;
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600&display=swap');
 
 * {
   font-family: 'Poppins', sans-serif;
@@ -309,23 +306,10 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* 如果你的外层已经有了 html, body 样式，这里可以考虑注释掉 */
-html,
-body {
-  height: 100vh;
-  overflow: hidden;
-}
-
-.container {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-}
-
 .row {
   display: flex;
   flex-wrap: wrap;
-  height: 100vh;
+  height: 100dvh;
 }
 
 .col {
@@ -479,7 +463,7 @@ body {
   position: absolute;
   top: 0;
   right: 0;
-  height: 100vh;
+  height: 100dvh;
   width: 300vw;
   transform: translate(35%, 0);
   background-image: linear-gradient(-45deg, var(--primary-color) 0%, var(--secondary-color) 100%);
@@ -550,7 +534,7 @@ body {
   .container.sign-in::before,
   .container.sign-up::before {
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     border-radius: 0;
     transform: none !important;
     right: 0 !important;
@@ -563,7 +547,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
