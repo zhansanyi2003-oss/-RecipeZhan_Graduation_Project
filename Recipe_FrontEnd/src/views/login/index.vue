@@ -195,7 +195,7 @@ onMounted(() => {
                 @input="clearError('username')"
               />
             </div>
-            <spa n class="error-text" v-if="formErrors.username">{{ formErrors.username }}</spa>
+            <span class="error-text" v-if="formErrors.username">{{ formErrors.username }}</span>
 
             <div class="input-group" :class="{ 'has-error': formErrors.email }">
               <i class="bx bx-mail-send"></i>

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, watch } from 'vue'
 import RecipeSliceList from '../../component/RecipeSliceList.vue'
 import { getRecipeCardApi } from '../../api/recipeCard'
@@ -38,7 +38,11 @@ const searchRecipe = ref(defaultSearchState())
 
 const normalizeStringArray = (value) => {
   if (Array.isArray(value)) return value
-  if (typeof value === 'string' && value.trim()) return value.split(',').map((v) => v.trim()).filter(Boolean)
+  if (typeof value === 'string' && value.trim())
+    return value
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
   return []
 }
 
@@ -170,9 +174,20 @@ const getCuisines = async () => {
   }
 }
 
+const initSearchState = () => {
+  const keyword = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
+
+  if (keyword) {
+    searchRecipe.value.title = keyword // 搜索框显示首页输入
+    return // 不让旧 session 覆盖
+  }
+
+  loadSearchState() // 只有没 keyword 才恢复 session
+}
+
 // 8. 页面加载：拉取动态选项 & 初始化列表
 onMounted(() => {
-  loadSearchState()
+  initSearchState()
   getFlavours()
   getCuisines()
   sliceReady.value = true
@@ -294,6 +309,7 @@ watch(
         :fetch-page="fetchRecipePage"
         :reload-key="sliceReloadKey"
         :enabled="sliceReady"
+        :xl="6"
         @items-change="handleSliceItemsChange"
       />
     </div>
@@ -624,6 +640,3 @@ watch(
   }
 }
 </style>
-
-
-

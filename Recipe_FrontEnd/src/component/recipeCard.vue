@@ -202,10 +202,12 @@ const getDifficultyType = (diff) => {
   font-weight: 800;
   color: #2c3e50;
   margin: 0 0 12px 0;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1.3;
+  min-height: calc(1.3em * 2);
 }
 
 /* 元数据：时间和难度 */

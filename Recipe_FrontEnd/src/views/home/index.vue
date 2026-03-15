@@ -1,66 +1,17 @@
-<script setup>
+﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, ArrowRight } from '@element-plus/icons-vue'
 // 假设你之前写好的食谱卡片组件在这里引入
 
-import { getCarouselCardApi } from '../../api/recipeCard'
-import RecipeCard from '../../component/recipeCard.vue'
+import { getCarouselCardApi, getTrendingRecipesApi } from '../../api/recipeCard'
+import RecipeSwitch from '../../component/recipeSwitch.vue'
 
 const router = useRouter()
 const searchKeyword = ref('')
 
 // 1. 模拟：每日推荐数据 (大图走马灯用)
 const recommendedRecipes = ref([])
-
-// 2. 模拟：最新发布的普通食谱 (可以复用你的 RecipeCard)
-// 这里随便塞几条假数据占位，后期接后端接口
-const trendingRecipes = ref([
-  {
-    id: 101,
-    title: 'Spaghetti',
-    coverImage:
-      'https://images.unsplash.com/photo-1521389508051-d7ffb5dc8e5c?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 20,
-    averageRating: 4.3,
-    ratingCount: 120,
-    isLiked: false,
-  },
-  {
-    id: 102,
-    title: 'Black Pepper Steak',
-    coverImage:
-      'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'MEDIUM',
-    cookingTimeMin: 25,
-    averageRating: 4.6,
-    ratingCount: 340,
-    isLiked: false,
-  },
-  {
-    id: 103,
-    title: 'Mushroom Soup',
-    coverImage:
-      'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 15,
-    averageRating: 4.1,
-    ratingCount: 89,
-    isLiked: false,
-  },
-  {
-    id: 104,
-    title: 'Caesar Salad',
-    coverImage:
-      'https://images.unsplash.com/photo-1551248429-40975aa4de74?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 10,
-    averageRating: 4.4,
-    ratingCount: 210,
-    isLiked: false,
-  },
-])
 
 const viewportWidth = ref(window.innerWidth)
 const isMobile = computed(() => viewportWidth.value < 768)
@@ -75,7 +26,7 @@ const handleResize = () => {
 const handleHeroSearch = () => {
   if (searchKeyword.value.trim()) {
     // 🌟 大厂交互：带上搜索词，直接跳转到你的 Explore (搜索大面板) 页面
-    router.push({ path: '/recipe', query: { keyword: searchKeyword.value } })
+    router.push({ path: '/recipe', query: { keyword: searchKeyword.value.trim() } })
   } else {
     router.push('/recipe')
   }
@@ -87,6 +38,10 @@ const getCarouselCard = async () => {
     recommendedRecipes.value = result.data
   }
 }
+const fetchTrendingPage = (page, size) => getTrendingRecipesApi(page, size)
+const trendingSwitchRef = ref(null)
+const handleTrendingSwitch = () => trendingSwitchRef.value?.switchBatch?.()
+
 onMounted(() => {
   getCarouselCard()
   window.addEventListener('resize', handleResize)
@@ -161,23 +116,26 @@ onBeforeUnmount(() => {
       </section>
 
       <section class="trending-section">
-        <div class="section-header">
+        <div class="section-header trending-header">
           <h2>🔥 Trending Now</h2>
-        </div>
-
-        <el-row :gutter="24">
-          <el-col
-            v-for="recipe in trendingRecipes"
-            :key="recipe.id"
-            :xs="24"
-            :sm="12"
-            :md="8"
-            :lg="6"
+          <el-button
+            class="switch-header-btn"
+            color="#4ea685"
+            round
+            plain
+            @click="handleTrendingSwitch"
           >
-            <RecipeCard :data="recipe" />
-          </el-col>
-        </el-row>
-
+            Show more
+          </el-button>
+        </div>
+        <RecipeSwitch
+          ref="trendingSwitchRef"
+          class="trending-switch"
+          :fetch-page="fetchTrendingPage"
+          :pool-size="12"
+          :batch-size="4"
+          :show-switch-button="false"
+        />
         <div class="explore-more-wrapper">
           <el-button
             color="#4ea685"
@@ -364,6 +322,20 @@ onBeforeUnmount(() => {
   margin-left: 8px;
 }
 
+.trending-switch {
+  width: 100%;
+}
+
+.trending-header {
+  align-items: center;
+}
+
+.switch-header-btn {
+  color: #4ea685;
+  border-color: #b7e2d2;
+  font-weight: 700;
+}
+
 @media (max-width: 992px) {
   .hero-section {
     height: 420px;
@@ -423,6 +395,18 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .trending-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .switch-header-btn {
+    min-height: 40px;
+    padding: 0 14px;
   }
 
   .card-info h3 {

@@ -81,13 +81,18 @@ watch(
             <el-menu mode="horizontal" :ellipsis="false" router class="modern-menu">
               <el-menu-item index="/">Home</el-menu-item>
               <el-menu-item index="/recipe">Explore</el-menu-item>
-              <el-menu-item index="/recomm">Recommend</el-menu-item>
+              <el-menu-item index="/recomm" v-if="isLoggedIn">Recommend</el-menu-item>
             </el-menu>
           </div>
 
           <div class="right-section desktop-actions">
             <template v-if="userInfo.isLoggedIn">
-              <el-button color="#4ea685" class="create-btn" round @click="navigate('/recipe/create')">
+              <el-button
+                color="#4ea685"
+                class="create-btn"
+                round
+                @click="navigate('/recipe/create')"
+              >
                 <el-icon><Plus /></el-icon> Create Recipe
               </el-button>
 
@@ -113,7 +118,9 @@ watch(
             </template>
 
             <template v-else>
-              <el-button color="#4ea685" class="signup-btn" round @click="goToLogin">Sign up</el-button>
+              <el-button color="#4ea685" class="signup-btn" round @click="goToLogin"
+                >Sign up</el-button
+              >
             </template>
           </div>
 
@@ -153,7 +160,9 @@ watch(
           <el-button class="mobile-danger" text @click="handleLogout">Log Out</el-button>
         </template>
         <template v-else>
-          <el-button class="mobile-primary" color="#4ea685" round @click="goToLogin">Sign up</el-button>
+          <el-button class="mobile-primary" color="#4ea685" round @click="goToLogin"
+            >Sign up</el-button
+          >
         </template>
       </div>
     </el-drawer>

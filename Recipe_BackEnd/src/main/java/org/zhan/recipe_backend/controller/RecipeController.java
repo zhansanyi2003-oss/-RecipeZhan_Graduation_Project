@@ -29,7 +29,7 @@ public class RecipeController {
     Map<String, Object> newStats;
 
     @PostMapping("")
-    public Result getRecipe(@RequestBody RecipeCardDto dto, @RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "12") Integer pageSize) {
+    public Result getRecipe(@RequestBody RecipeCardDto dto, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "12") Integer pageSize) {
 
         return Result.Success(recipeCardService.getRecipeCards(dto, page, pageSize));
     }
@@ -66,10 +66,16 @@ public class RecipeController {
 
 
     @GetMapping("/recc")
-    public Result getRecipeDetails(@RequestParam Integer localHour) {
+    public Result getReccomendRecipes(@RequestParam Integer localHour) {
         return Result.Success(recipeCardService.getPersonalizedRecommendations(localHour));
 
     }
+    @GetMapping("/trending")
+    public Result getTrendingRecipes(@RequestParam(defaultValue = "0") Integer page,@RequestParam(defaultValue = "12") Integer pageSize) {
+        return Result.Success(recipeCardService.getTrendingRecipes(page,pageSize));
+
+    }
+
 
 
     @DeleteMapping("/rate")

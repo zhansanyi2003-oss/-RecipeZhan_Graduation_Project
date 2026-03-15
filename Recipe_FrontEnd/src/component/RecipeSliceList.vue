@@ -61,14 +61,14 @@ const props = defineProps({
   },
   xl: {
     type: Number,
-    default: 4,
+    default: 6,
   },
 })
 
 const emit = defineEmits(['items-change', 'like-toggled', 'error', 'state-change'])
 
 const items = ref([])
-const currentPage = ref(1)
+const currentPage = ref(0)
 const hasNext = ref(false)
 const loading = ref(false)
 const initialized = ref(false)
@@ -89,7 +89,7 @@ const emitStateChange = () => {
 
 const resetState = () => {
   items.value = []
-  currentPage.value = 1
+  currentPage.value = 0
   hasNext.value = false
   loading.value = false
   initialized.value = false
@@ -109,7 +109,7 @@ const parseResult = (result, page) => {
     if (!fullListCache.value) {
       fullListCache.value = data
     }
-    const start = (page - 1) * props.pageSize
+    const start = page * props.pageSize
     const end = start + props.pageSize
     return {
       pageItems: fullListCache.value.slice(start, end),
@@ -166,7 +166,7 @@ const loadPage = async (page, append = false) => {
 const refresh = async () => {
   resetState()
   if (props.enabled) {
-    await loadPage(1, false)
+    await loadPage(0, false)
   }
 }
 
@@ -196,7 +196,7 @@ defineExpose({
 
 onMounted(() => {
   if (props.enabled) {
-    loadPage(1, false)
+    loadPage(0, false)
   }
 })
 
@@ -214,7 +214,7 @@ watch(
   (enabled, prevEnabled) => {
     if (!enabled) return
     if (!prevEnabled && !initialized.value) {
-      loadPage(1, false)
+      loadPage(0, false)
     }
   },
 )
@@ -279,7 +279,9 @@ watch(
   color: #fff !important;
   background-color: #4ea685 !important;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .slice-load-more-btn:hover {
