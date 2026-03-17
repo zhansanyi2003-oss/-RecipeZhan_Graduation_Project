@@ -1,32 +1,33 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getUserInfoApi } from '../../api/user'
 
 const router = useRouter()
 const route = useRoute()
 const mobileNavOpen = ref(false)
 
-const userInfo = ref({ name: 'Visitor', isLoggedIn: false })
+const userInfo = ref({ name: 'Visitor', avatarUrl: '', isLoggedIn: false })
 
 const checkLoginStatus = () => {
   const loginUserStr = localStorage.getItem('loginUser')
   if (!loginUserStr) {
-    userInfo.value = { name: 'Visitor', isLoggedIn: false }
+    userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
     return
   }
 
   try {
     const loginUser = JSON.parse(loginUserStr)
     if (loginUser?.username) {
-      userInfo.value = { name: loginUser.username, isLoggedIn: true }
+      userInfo.value = { name: loginUser.username, avatarUrl: '', isLoggedIn: true }
       return
     }
   } catch (error) {
     console.error('login data error', error)
   }
 
-  userInfo.value = { name: 'Visitor', isLoggedIn: false }
+  userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
 }
 
 const handleLogout = () => {
@@ -37,7 +38,7 @@ const handleLogout = () => {
   })
     .then(() => {
       localStorage.removeItem('loginUser')
-      userInfo.value = { name: 'Visitor', isLoggedIn: false }
+      userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
       mobileNavOpen.value = false
       ElMessage.success('Logged out successfully')
       router.push('/')
@@ -55,17 +56,36 @@ const navigate = (path) => {
   router.push(path)
 }
 
-onMounted(() => {
-  checkLoginStatus()
+const userInitial = computed(() => {
+  return userInfo.value.name?.charAt(0)?.toUpperCase() || 'U'
 })
+
+const loadUserProfile = async () => {
+  if (!userInfo.value.isLoggedIn) return
+  try {
+    const res = await getUserInfoApi()
+    if (res.code && res.data) {
+      userInfo.value.name = res.data.username || userInfo.value.name
+      userInfo.value.avatarUrl = res.data.avatarUrl || ''
+    }
+  } catch (e) {
+    userInfo.value.avatarUrl = ''
+  }
+}
 
 watch(
   () => route.path,
-  () => {
+  async () => {
     checkLoginStatus()
+    await loadUserProfile()
     mobileNavOpen.value = false
   },
 )
+
+onMounted(async () => {
+  checkLoginStatus()
+  await loadUserProfile()
+})
 </script>
 
 <template>
@@ -81,7 +101,7 @@ watch(
             <el-menu mode="horizontal" :ellipsis="false" router class="modern-menu">
               <el-menu-item index="/">Home</el-menu-item>
               <el-menu-item index="/recipe">Explore</el-menu-item>
-              <el-menu-item index="/recomm" v-if="isLoggedIn">Recommend</el-menu-item>
+              <el-menu-item index="/recomm" v-if="userInfo.isLoggedIn">Recommend</el-menu-item>
             </el-menu>
           </div>
 
@@ -98,8 +118,13 @@ watch(
 
               <el-dropdown trigger="hover" class="user-dropdown">
                 <div class="avatar-wrapper">
-                  <el-avatar :size="38" style="background: #4ea685; font-weight: bold">
-                    {{ userInfo.name.charAt(0).toUpperCase() }}
+                  <el-avatar
+                    :size="38"
+                    :src="userInfo.avatarUrl || undefined"
+                    style="background: #4ea685; font-weight: bold"
+                    @error="() => (userInfo.avatarUrl = '')"
+                  >
+                    {{ userInitial }}
                   </el-avatar>
                   <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
                 </div>

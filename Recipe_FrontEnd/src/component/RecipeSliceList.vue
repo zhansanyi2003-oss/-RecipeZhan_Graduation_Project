@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import RecipeCardGrid from './RecipeCardGrid.vue'
+import { parsePagedResult } from '../utils/paginationResult.js'
 
 const props = defineProps({
   fetchPage: {
@@ -99,15 +100,11 @@ const resetState = () => {
 }
 
 const parseResult = (result, page) => {
-  if (!result || !result.code) {
-    throw new Error(result?.msg || 'Failed to load recipes.')
-  }
+  const parsed = parsePagedResult(result)
 
-  const data = result.data
-
-  if (Array.isArray(data)) {
+  if (parsed.shape === 'array') {
     if (!fullListCache.value) {
-      fullListCache.value = data
+      fullListCache.value = parsed.items
     }
     const start = page * props.pageSize
     const end = start + props.pageSize
@@ -117,23 +114,9 @@ const parseResult = (result, page) => {
     }
   }
 
-  if (data && Array.isArray(data.content)) {
-    return {
-      pageItems: data.content,
-      next: !data.last,
-    }
-  }
-
-  if (data && Array.isArray(data.items)) {
-    return {
-      pageItems: data.items,
-      next: Boolean(data.hasNext),
-    }
-  }
-
   return {
-    pageItems: [],
-    next: false,
+    pageItems: parsed.items,
+    next: parsed.hasNext,
   }
 }
 

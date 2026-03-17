@@ -73,7 +73,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/recipes/**").permitAll()
                         .requestMatchers("/api/upload/**").permitAll()
                         .requestMatchers("/images/**").permitAll()
-
                         .anyRequest().authenticated()
                 );
 
@@ -90,7 +89,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList("*")); // 允许所有前端地址 (比如 localhost:5173)
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

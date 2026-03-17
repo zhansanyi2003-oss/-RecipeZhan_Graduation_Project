@@ -1,13 +1,16 @@
 ﻿<script setup>
 import { computed, onMounted, ref } from 'vue'
 import RecipeCardGrid from './RecipeCardGrid.vue'
+import { parsePagedResult } from '../utils/paginationResult.js'
 
 const props = defineProps({
+  title: { type: String, default: '' },
+  subtitle: { type: String, default: '' },
+  titleIcon: { type: String, default: '' },
+  switchButtonText: { type: String, default: 'Show more' },
   fetchPage: { type: Function, required: true },
   poolSize: { type: Number, default: 12 },
   batchSize: { type: Number, default: 4 },
-  showSwitchButton: { type: Boolean, default: true },
-  switchButtonText: { type: String, default: 'Show more' },
   gutter: { type: Number, default: 24 },
   xs: { type: Number, default: 24 },
   sm: { type: Number, default: 12 },
@@ -36,13 +39,15 @@ const loadPool = async (targetPage = 0) => {
   loading.value = true
   try {
     const result = await props.fetchPage(targetPage, props.poolSize)
-    if (!result?.code) return
-
-    const slice = result.data || {}
-    pool.value = Array.isArray(slice.content) ? slice.content : []
-    hasNext.value = typeof slice.hasNext === 'boolean' ? slice.hasNext : !slice.last
+    const parsed = parsePagedResult(result)
+    pool.value = parsed.items
+    hasNext.value = parsed.hasNext
     page.value = targetPage
     batchIndex.value = 0
+  } catch (error) {
+    console.error(error)
+    pool.value = []
+    hasNext.value = false
   } finally {
     loading.value = false
   }
@@ -73,7 +78,20 @@ defineExpose({
 </script>
 
 <template>
-  <div>
+  <section class="recipe-switch-section">
+    <div class="section-header">
+      <div class="title-wrap">
+        <h2 class="section-title">
+          <span v-if="titleIcon" class="title-icon">{{ titleIcon }}</span>
+          <span>{{ title }}</span>
+        </h2>
+        <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
+      </div>
+      <el-button color="#4ea685" round plain :loading="loading" @click="switchBatch">
+        {{ switchButtonText }}
+      </el-button>
+    </div>
+
     <RecipeCardGrid
       :recipes="visibleItems"
       :gutter="gutter"
@@ -84,13 +102,68 @@ defineExpose({
       :xl="xl"
       @like-toggled="(...args) => emit('like-toggled', ...args)"
     />
-  </div>
+  </section>
 </template>
 
 <style scoped>
+.recipe-switch-section {
+  width: 100%;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 50px;
+  margin-bottom: 24px;
+}
+
+.title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-icon {
+  color: #4ea685;
+  line-height: 1;
+}
+
+.section-subtitle {
+  margin: 0;
+  color: #909399;
+  font-size: 1rem;
+}
+
 .switch-wrap {
   display: flex;
   justify-content: center;
   margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .section-header {
+    margin-top: 26px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+  }
 }
 </style>

@@ -222,12 +222,11 @@ watch(
             title="Click to upload a new avatar"
           >
             <el-avatar
-              v-if="userInfo.avatarUrl"
               :size="100"
-              :src="userInfo.avatarUrl"
-              class="avatar"
-            />
-            <el-avatar v-else :size="100" class="avatar initial-avatar">
+              :src="userInfo.avatarUrl || undefined"
+              class="avatar initial-avatar"
+              @error="() => (userInfo.avatarUrl = '')"
+            >
               {{ userInitial }}
             </el-avatar>
           </el-upload>
