@@ -1,10 +1,9 @@
 <script setup>
 import { ref } from 'vue'
-import { Avatar, Bowl, Clock, Setting, Star } from '@element-plus/icons-vue'
+import { Avatar, Setting } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 
-// 同样，记得引入你的食谱卡片组件！
-import RecipeCard from '../../component/recipeCard.vue'
+import RecipeSwitch from '../../component/recipeSwitch.vue'
 const router = useRouter()
 
 // 模拟打开口味偏好设置 (后期可以接一个真实的抽屉或弹窗)
@@ -157,6 +156,33 @@ const quickRecipes = ref([
     isLiked: false,
   },
 ])
+
+const toSliceResult = (list, page, pageSize) => {
+  const start = page * pageSize
+  const end = start + pageSize
+  const content = list.slice(start, end)
+  const hasNext = end < list.length
+  return {
+    code: 1,
+    data: {
+      content,
+      hasNext,
+      last: !hasNext,
+    },
+  }
+}
+
+const fetchSeasonalPage = async (page, pageSize) => {
+  return toSliceResult(seasonalRecipes.value, page, pageSize)
+}
+
+const fetchSavedPage = async (page, pageSize) => {
+  return toSliceResult(basedOnSaves.value, page, pageSize)
+}
+
+const fetchQuickPage = async (page, pageSize) => {
+  return toSliceResult(quickRecipes.value, page, pageSize)
+}
 </script>
 
 <template>
@@ -185,58 +211,36 @@ const quickRecipes = ref([
       </div>
 
       <section class="recomm-section">
-        <div class="section-header">
-          <div class="title-group">
-            <h2>
-              <el-icon class="title-icon"><Bowl /></el-icon> Seasonal Picks
-            </h2>
-            <span class="subtitle">Fresh ingredients perfect for this Spring</span>
-          </div>
-        </div>
-        <el-row :gutter="24">
-          <el-col
-            v-for="recipe in seasonalRecipes"
-            :key="recipe.id"
-            :xs="24"
-            :sm="12"
-            :md="8"
-            :lg="6"
-          >
-            <RecipeCard :data="recipe" />
-          </el-col>
-        </el-row>
+        <RecipeSwitch
+          title="Seasonal Picks"
+          subtitle="Fresh ingredients perfect for this Spring"
+          title-icon="🌱"
+          :fetch-page="fetchSeasonalPage"
+          :pool-size="12"
+          :batch-size="4"
+        />
       </section>
 
       <section class="recomm-section">
-        <div class="section-header">
-          <div class="title-group">
-            <h2>
-              <el-icon class="title-icon"><Star /></el-icon> Because you liked "Spaghetti"
-            </h2>
-            <span class="subtitle">Italian cuisine lovers also enjoyed these</span>
-          </div>
-        </div>
-        <el-row :gutter="24">
-          <el-col v-for="recipe in basedOnSaves" :key="recipe.id" :xs="24" :sm="12" :md="8" :lg="6">
-            <RecipeCard :data="recipe" />
-          </el-col>
-        </el-row>
+        <RecipeSwitch
+          title='Because you liked "Spaghetti"'
+          subtitle="Italian cuisine lovers also enjoyed these"
+          title-icon="☆"
+          :fetch-page="fetchSavedPage"
+          :pool-size="12"
+          :batch-size="4"
+        />
       </section>
 
       <section class="recomm-section">
-        <div class="section-header">
-          <div class="title-group">
-            <h2>
-              <el-icon class="title-icon"><Clock /></el-icon> Quick & Easy
-            </h2>
-            <span class="subtitle">Since you prefer meals under 30 minutes</span>
-          </div>
-        </div>
-        <el-row :gutter="24">
-          <el-col v-for="recipe in quickRecipes" :key="recipe.id" :xs="24" :sm="12" :md="8" :lg="6">
-            <RecipeCard :data="recipe" />
-          </el-col>
-        </el-row>
+        <RecipeSwitch
+          title="Quick & Easy"
+          subtitle="Since you prefer meals under 30 minutes"
+          title-icon="⏱"
+          :fetch-page="fetchQuickPage"
+          :pool-size="12"
+          :batch-size="4"
+        />
       </section>
     </div>
   </div>
@@ -318,30 +322,13 @@ const quickRecipes = ref([
   margin-bottom: 50px;
 }
 
-.section-header {
-  margin-bottom: 24px;
-  border-bottom: 2px solid #eef7f4;
-  padding-bottom: 12px;
+.recomm-section :deep(.section-header) {
+  margin-top: 0;
+  margin-bottom: 16px;
 }
 
-.title-group h2 {
-  margin: 0;
-  font-size: 1.6rem;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.title-icon {
-  color: #4ea685;
-}
-
-.subtitle {
-  display: block;
-  margin-top: 6px;
-  color: #909399;
-  font-size: 1rem;
+.recomm-section :deep(.section-subtitle) {
+  margin-top: 2px;
 }
 
 /* 响应式调整横幅 */
@@ -399,11 +386,11 @@ const quickRecipes = ref([
     justify-content: center;
   }
 
-  .title-group h2 {
+  .recomm-section :deep(.section-title) {
     font-size: 1.2rem;
   }
 
-  .subtitle {
+  .recomm-section :deep(.section-subtitle) {
     font-size: 0.9rem;
   }
 

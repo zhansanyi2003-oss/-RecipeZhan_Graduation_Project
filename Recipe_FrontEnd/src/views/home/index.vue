@@ -39,8 +39,6 @@ const getCarouselCard = async () => {
   }
 }
 const fetchTrendingPage = (page, size) => getTrendingRecipesApi(page, size)
-const trendingSwitchRef = ref(null)
-const handleTrendingSwitch = () => trendingSwitchRef.value?.switchBatch?.()
 
 onMounted(() => {
   getCarouselCard()
@@ -116,25 +114,13 @@ onBeforeUnmount(() => {
       </section>
 
       <section class="trending-section">
-        <div class="section-header trending-header">
-          <h2>🔥 Trending Now</h2>
-          <el-button
-            class="switch-header-btn"
-            color="#4ea685"
-            round
-            plain
-            @click="handleTrendingSwitch"
-          >
-            Show more
-          </el-button>
-        </div>
         <RecipeSwitch
-          ref="trendingSwitchRef"
           class="trending-switch"
+          title="🔥 Trending Now"
           :fetch-page="fetchTrendingPage"
           :pool-size="12"
           :batch-size="4"
-          :show-switch-button="false"
+          switch-button-text="Show more"
         />
         <div class="explore-more-wrapper">
           <el-button
@@ -326,16 +312,6 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.trending-header {
-  align-items: center;
-}
-
-.switch-header-btn {
-  color: #4ea685;
-  border-color: #b7e2d2;
-  font-weight: 700;
-}
-
 @media (max-width: 992px) {
   .hero-section {
     height: 420px;
@@ -395,18 +371,6 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .trending-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .switch-header-btn {
-    min-height: 40px;
-    padding: 0 14px;
   }
 
   .card-info h3 {

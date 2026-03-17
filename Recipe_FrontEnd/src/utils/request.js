@@ -12,7 +12,8 @@ request.interceptors.response.use(
     return response.data
   },
   (error) => {
-    if (error.response.status === 403) {
+    const status = error?.response?.status
+    if (status === 403) {
       router.push('/login')
     }
 

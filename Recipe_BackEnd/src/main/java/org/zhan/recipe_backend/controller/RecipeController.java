@@ -26,7 +26,7 @@ public class RecipeController {
     private RecipeService recipeService;
     @Autowired
     private RatingServiceImpl ratingService;
-    Map<String, Object> newStats;
+
 
     @PostMapping("")
     public Result getRecipe(@RequestBody RecipeCardDto dto, @RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "12") Integer pageSize) {
@@ -34,11 +34,6 @@ public class RecipeController {
         return Result.Success(recipeCardService.getRecipeCards(dto, page, pageSize));
     }
 
-    @GetMapping("/recommendations")
-    public Result getRecommendations(@RequestParam(required = false) Integer hour) {
-        int queryHour = hour != null ? hour : LocalTime.now().getHour();
-        return Result.Success(recipeCardService.getPersonalizedRecommendations(queryHour));
-    }
 
     @GetMapping("/flavours")
     public Result getFlavours() {
@@ -81,7 +76,7 @@ public class RecipeController {
     @DeleteMapping("/rate")
     public Result deleteRecipe(@RequestParam("id") Long id) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        newStats = ratingService.deleteRating(id, userId);
+        Map<String, Object> newStats =ratingService.deleteRating(id, userId);
         return Result.Success(newStats);
     }
 
@@ -104,7 +99,7 @@ public class RecipeController {
 
         try {
             // 调用 Service，拿到最新的平均分和人数
-            newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
+            Map<String, Object>  newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
             return Result.Success(newStats);
         } catch (Exception e) {
             return Result.Error("Failed to submit rating");
