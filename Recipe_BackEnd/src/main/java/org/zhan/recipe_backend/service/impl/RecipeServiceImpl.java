@@ -3,6 +3,9 @@ package org.zhan.recipe_backend.service.impl;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.document.RecipeDoc;
@@ -97,28 +100,59 @@ public class RecipeServiceImpl implements RecipeService {
     @Override
     public void updateRecipe(Long id, RecipeDetailDto dto) {
         Long currentUserId = AuthUtils.getCurrentUserIdOrNull();
-        if (currentUserId == null) {
-            throw new RuntimeException("Please login first.");
-        }
 
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
 
-        if (recipe.getAuthor() == null || !recipe.getAuthor().getId().equals(currentUserId)) {
+        boolean isOwner = recipe.getAuthor() != null && recipe.getAuthor().getId().equals(currentUserId);
+        boolean isAdmin = AuthUtils.isAdmin();
+
+        if (!isOwner && !isAdmin) {
             throw new RuntimeException("You can only edit your own recipe.");
         }
 
-        BeanUtils.copyProperties(dto, recipe, "id", "author", "averageRating", "ratingCount", "createdAt", "updatedAt");
-
-        syncCollection(recipe.getRecipeFlavours(), buildFlavours(dto.getFlavours(), recipe), recipe::setRecipeFlavours);
-        syncCollection(recipe.getRecipeCourses(), buildCourses(dto.getCourses(), recipe), recipe::setRecipeCourses);
-        syncCollection(recipe.getRecipeCuisines(), buildCuisines(dto.getCuisines(), recipe), recipe::setRecipeCuisines);
-        syncCollection(recipe.getRecipeDietTypes(), buildDietType(dto.getDietTypes(), recipe), recipe::setRecipeDietTypes);
-        syncCollection(recipe.getRecipeIngredients(), buildIngredients(dto.getIngredients(), recipe), recipe::setRecipeIngredients);
-        syncCollection(recipe.getSteps(), buildSteps(dto.getSteps(), recipe), recipe::setSteps);
+        applyRecipeUpdate(recipe, dto);
 
         Recipe savedRecipe = recipeRepository.save(recipe);
         syncToElasticsearch(savedRecipe);
+    }
+
+    @Override
+    public Slice<AdminRecipeCardDto> getAdminRecipeCards(Integer page, Integer pageSize, String keyword) {
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Slice<Recipe> recipeSlice;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            recipeSlice = recipeRepository.findByTitleContainingIgnoreCaseOrderByCreatedAtDesc(keyword.trim(), pageable);
+        } else {
+            recipeSlice = recipeRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
+
+        return recipeSlice.map(this::toAdminRecipeCardDto);
+    }
+
+    @Transactional
+    @Override
+    public void adminUpdateRecipe(Long id, RecipeDetailDto dto) {
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
+        applyRecipeUpdate(recipe, dto);
+
+        Recipe savedRecipe = recipeRepository.save(recipe);
+        syncToElasticsearch(savedRecipe);
+    }
+
+    @Transactional
+    @Override
+    public void adminDeleteRecipe(Long id) {
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
+
+        // Clean dependent records first to avoid FK violations.
+        userSavedRepository.deleteByRecipeId(id);
+        ratingRepository.deleteByRecipeId(id);
+
+        recipeRepository.delete(recipe);
+        deleteFromElasticsearch(id);
     }
 
     // ==========================================
@@ -211,6 +245,35 @@ public class RecipeServiceImpl implements RecipeService {
         current.addAll(replacement);
     }
 
+    private void applyRecipeUpdate(Recipe recipe, RecipeDetailDto dto) {
+        BeanUtils.copyProperties(dto, recipe, "id", "author", "averageRating", "ratingCount", "createdAt", "updatedAt");
+
+        syncCollection(recipe.getRecipeFlavours(), buildFlavours(dto.getFlavours(), recipe), recipe::setRecipeFlavours);
+        syncCollection(recipe.getRecipeCourses(), buildCourses(dto.getCourses(), recipe), recipe::setRecipeCourses);
+        syncCollection(recipe.getRecipeCuisines(), buildCuisines(dto.getCuisines(), recipe), recipe::setRecipeCuisines);
+        syncCollection(recipe.getRecipeDietTypes(), buildDietType(dto.getDietTypes(), recipe), recipe::setRecipeDietTypes);
+        syncCollection(recipe.getRecipeIngredients(), buildIngredients(dto.getIngredients(), recipe), recipe::setRecipeIngredients);
+        syncCollection(recipe.getSteps(), buildSteps(dto.getSteps(), recipe), recipe::setSteps);
+    }
+
+    private AdminRecipeCardDto toAdminRecipeCardDto(Recipe recipe) {
+        AdminRecipeCardDto dto = new AdminRecipeCardDto();
+        dto.setId(recipe.getId());
+        dto.setTitle(recipe.getTitle());
+        dto.setCoverImage(recipe.getCoverImage());
+        dto.setDifficulty(recipe.getDifficulty());
+        dto.setCookingTimeMin(recipe.getCookingTimeMin());
+        dto.setAverageRating(recipe.getAverageRating());
+        dto.setRatingCount(recipe.getRatingCount());
+        dto.setCreatedAt(recipe.getCreatedAt());
+        dto.setUpdatedAt(recipe.getUpdatedAt());
+        if (recipe.getAuthor() != null) {
+            dto.setAuthorId(recipe.getAuthor().getId());
+            dto.setAuthorName(recipe.getAuthor().getUsername());
+        }
+        return dto;
+    }
+
 
     public void syncToElasticsearch(Recipe recipe) {
         try {
@@ -220,6 +283,14 @@ public class RecipeServiceImpl implements RecipeService {
 
         } catch (Exception e) {
 
+
+        }
+    }
+
+    private void deleteFromElasticsearch(Long recipeId) {
+        try {
+            recipeEsRepository.deleteById(recipeId);
+        } catch (Exception e) {
 
         }
     }

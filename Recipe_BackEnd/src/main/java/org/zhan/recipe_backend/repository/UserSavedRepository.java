@@ -18,6 +18,8 @@ public interface UserSavedRepository extends JpaRepository<UserSavedRecipes, Lon
 
     void deleteByUserIdAndRecipeId(Long userId, Long recipeId);
 
+    void deleteByRecipeId(Long recipeId);
+
     // 🌟 获取用户的收藏列表，支持按照收藏时间倒序，完美支持分页（Pageable）！
     @Query("SELECT s.recipe FROM UserSavedRecipes s WHERE s.user.id = :userId ORDER BY s.createdAt DESC")
     Slice<Recipe> findSavedRecipesByUserId(@Param("userId") Long userId, Pageable pageable);

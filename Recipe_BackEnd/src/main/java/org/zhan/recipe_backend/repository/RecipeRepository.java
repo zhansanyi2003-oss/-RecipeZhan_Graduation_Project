@@ -18,6 +18,10 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     Slice<Recipe> findByAuthorIdOrderByCreatedAtDesc(Long authorId, Pageable pageable);
 
+    Slice<Recipe> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Slice<Recipe> findByTitleContainingIgnoreCaseOrderByCreatedAtDesc(String title, Pageable pageable);
+
     int countByAuthorId(Long authorId);
 
 

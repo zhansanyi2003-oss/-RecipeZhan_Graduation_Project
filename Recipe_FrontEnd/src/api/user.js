@@ -27,3 +27,22 @@ export const updatePreferenceApi = (data) => {
 export const getPreferenceApi = () => {
   return request.get('/users/preference')
 }
+
+export const getAdminRecipesApi = (page, pageSize, keyword = '') => {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  })
+  if (keyword && keyword.trim()) {
+    params.append('keyword', keyword.trim())
+  }
+  return request.get(`/admin/recipes?${params.toString()}`)
+}
+
+export const updateAdminRecipeApi = (id, data) => {
+  return request.put(`/admin/recipes/${id}`, data)
+}
+
+export const deleteAdminRecipeApi = (id) => {
+  return request.delete(`/admin/recipes/${id}`)
+}

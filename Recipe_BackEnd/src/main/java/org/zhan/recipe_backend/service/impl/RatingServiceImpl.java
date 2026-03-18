@@ -3,6 +3,7 @@ package org.zhan.recipe_backend.service.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.zhan.recipe_backend.dto.RatingStatsDto;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.Recipe_Rating;
 import org.zhan.recipe_backend.repository.RatingRepository;
@@ -24,45 +25,42 @@ public class RatingServiceImpl {
     private RecipeServiceImpl recipeService;
 
 
-    @Transactional // 🌟 必须加事务，保证两张表同时成功或同时失败
-    public  Map<String, Object> submitRating(Long recipeId, Long userId, Double score) {
-        // 1. 查找用户是否已经评过分
+    @Transactional
+    public  RatingStatsDto submitRating(Long recipeId, Long userId, Double score) {
+
         Optional<Recipe_Rating> existingRating = ratingRepository.findByUserIdAndRecipeId(userId, recipeId);
 
         Recipe_Rating rating;
         if (existingRating.isPresent()) {
             rating = existingRating.get();
-            rating.setScore(score); // 更新分数
+            rating.setScore(score);
         } else {
             rating = new Recipe_Rating();
             rating.setUserId(userId);
             rating.setRecipeId(recipeId);
-            rating.setScore(score); // 插入新分数
+            rating.setScore(score);
         }
         ratingRepository.save(rating);
 
-        // 2. 重新计算这道菜的最新平均分和总人数
-        Double newAvg = ratingRepository.calculateAverageByRecipeId(recipeId);
+
+        Double newAvg = ratingRepository.getAverageByRecipeId(recipeId);
         Integer newCount = ratingRepository.countByRecipeId(recipeId);
 
-        // 3. 更新到 Recipe 主表中
         Double formattedAvg = Math.round(newAvg * 10.0) / 10.0;
         Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
-        // 保留一位小数
+
         recipe.setAverageRating(formattedAvg);
         recipe.setRatingCount(newCount);
         recipeRepository.save(recipe);
         recipeService.syncToElasticsearch(recipe);
+        return new RatingStatsDto(newAvg,newCount);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("newAverageRating", formattedAvg);
-        result.put("newRatingCount", newCount);
-        return result;
+
     }
 
     @Transactional
-    public Map<String, Object> deleteRating(Long id, Long userId) {
+    public RatingStatsDto deleteRating(Long id, Long userId) {
         Recipe_Rating existingRating = ratingRepository.findByUserIdAndRecipeId(userId, id)
                 .orElseThrow(() -> new RuntimeException("您还未对该食谱打分，无法取消！"));
         ratingRepository.delete(existingRating);
@@ -72,29 +70,11 @@ public class RatingServiceImpl {
 
         // 去打分表里重新数一下这道菜还剩多少人打分
         int newCount = ratingRepository.countByRecipeId(id);
-        Double newAvg;
-        if (newCount > 0) {
-            // 如果还有人打分，让数据库用 SQL 的 AVG() 函数重新算一次平均分
-           newAvg= ratingRepository.calculateAverageByRecipeId(id);
-            // 保留一位小数 (比如 4.5)
-            newAvg = Math.round(newAvg * 10.0) / 10.0;
-
-
-        } else {
-          newAvg = 0.0;
-
-        }
+        Double newAvg=ratingRepository.getAverageByRecipeId(id);
+        newAvg = Math.round(newAvg * 10.0) / 10.0;
         recipe.setRatingCount(newCount);
         recipe.setAverageRating(newAvg);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("newAverageRating", newAvg);
-        result.put("newRatingCount", newCount);
-        Recipe savedRecipe = recipeRepository.save(recipe);
-        recipeService.syncToElasticsearch(savedRecipe);
-
-
-        return result;
+        return new RatingStatsDto(newAvg,newCount);
 
     }
 }

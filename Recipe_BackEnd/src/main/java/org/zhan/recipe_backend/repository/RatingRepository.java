@@ -13,7 +13,9 @@ public interface RatingRepository extends JpaRepository<Recipe_Rating, Long> {
     Optional<Recipe_Rating> findByUserIdAndRecipeId(Long userId, Long recipeId);
     Integer countByRecipeId(Long recipeId);
     @Query("SELECT COALESCE(AVG(r.score), 0.0) FROM Recipe_Rating r WHERE r.recipeId = :recipeId")
-    Double calculateAverageByRecipeId(@Param("recipeId") Long recipeId);
+    Double getAverageByRecipeId(@Param("recipeId") Long recipeId);
+
+    void deleteByRecipeId(Long recipeId);
 
 
 

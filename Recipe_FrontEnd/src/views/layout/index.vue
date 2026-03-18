@@ -8,26 +8,31 @@ const router = useRouter()
 const route = useRoute()
 const mobileNavOpen = ref(false)
 
-const userInfo = ref({ name: 'Visitor', avatarUrl: '', isLoggedIn: false })
+const userInfo = ref({ name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false })
 
 const checkLoginStatus = () => {
   const loginUserStr = localStorage.getItem('loginUser')
   if (!loginUserStr) {
-    userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
+    userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
     return
   }
 
   try {
     const loginUser = JSON.parse(loginUserStr)
     if (loginUser?.username) {
-      userInfo.value = { name: loginUser.username, avatarUrl: '', isLoggedIn: true }
+      userInfo.value = {
+        name: loginUser.username,
+        avatarUrl: '',
+        role: typeof loginUser.role === 'string' ? loginUser.role.toUpperCase() : null,
+        isLoggedIn: true,
+      }
       return
     }
   } catch (error) {
     console.error('login data error', error)
   }
 
-  userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
+  userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
 }
 
 const handleLogout = () => {
@@ -38,7 +43,7 @@ const handleLogout = () => {
   })
     .then(() => {
       localStorage.removeItem('loginUser')
-      userInfo.value = { name: 'Visitor', avatarUrl: '', isLoggedIn: false }
+      userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
       mobileNavOpen.value = false
       ElMessage.success('Logged out successfully')
       router.push('/')
@@ -60,6 +65,8 @@ const userInitial = computed(() => {
   return userInfo.value.name?.charAt(0)?.toUpperCase() || 'U'
 })
 
+const isAdmin = computed(() => userInfo.value.role === 'ADMIN')
+
 const loadUserProfile = async () => {
   if (!userInfo.value.isLoggedIn) return
   try {
@@ -67,6 +74,10 @@ const loadUserProfile = async () => {
     if (res.code && res.data) {
       userInfo.value.name = res.data.username || userInfo.value.name
       userInfo.value.avatarUrl = res.data.avatarUrl || ''
+      userInfo.value.role =
+        typeof res.data.role === 'string'
+          ? res.data.role.toUpperCase()
+          : userInfo.value.role || null
     }
   } catch (e) {
     userInfo.value.avatarUrl = ''
@@ -134,6 +145,9 @@ onMounted(async () => {
                     <el-dropdown-item @click="navigate('/profile')">
                       <el-icon><User /></el-icon> My Profile
                     </el-dropdown-item>
+                    <el-dropdown-item v-if="isAdmin" @click="navigate('/admin/recipes')">
+                      <el-icon><Setting /></el-icon> Admin Console
+                    </el-dropdown-item>
                     <el-dropdown-item divided @click="handleLogout" class="logout-item">
                       <el-icon><SwitchButton /></el-icon> Log Out
                     </el-dropdown-item>
@@ -182,6 +196,9 @@ onMounted(async () => {
 
         <template v-if="userInfo.isLoggedIn">
           <el-button class="mobile-link" text @click="navigate('/profile')">My Profile</el-button>
+          <el-button v-if="isAdmin" class="mobile-link" text @click="navigate('/admin/recipes')">
+            Admin Console
+          </el-button>
           <el-button class="mobile-danger" text @click="handleLogout">Log Out</el-button>
         </template>
         <template v-else>
