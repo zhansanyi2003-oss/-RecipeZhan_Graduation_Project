@@ -76,8 +76,8 @@ public class RecipeController {
     @DeleteMapping("/rate")
     public Result deleteRecipe(@RequestParam("id") Long id) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Map<String, Object> newStats =ratingService.deleteRating(id, userId);
-        return Result.Success(newStats);
+
+        return Result.Success(ratingService.deleteRating(id,userId));
     }
 
     @PostMapping("/create")
@@ -98,9 +98,7 @@ public class RecipeController {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         try {
-            // 调用 Service，拿到最新的平均分和人数
-            Map<String, Object>  newStats = ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore());
-            return Result.Success(newStats);
+            return Result.Success(ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore()));
         } catch (Exception e) {
             return Result.Error("Failed to submit rating");
         }

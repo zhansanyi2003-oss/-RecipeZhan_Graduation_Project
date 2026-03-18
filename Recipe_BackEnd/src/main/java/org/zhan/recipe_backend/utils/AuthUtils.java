@@ -24,4 +24,19 @@ public class AuthUtils {
     public static boolean isGuest() {
         return getCurrentUserIdOrNull() == null;
     }
+
+    public static boolean hasRole(String role) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+
+        String roleName = role != null && role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> roleName.equals(authority.getAuthority()));
+    }
+
+    public static boolean isAdmin() {
+        return hasRole("ADMIN");
+    }
 }

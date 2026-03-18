@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import Layout from '../views/layout/index.vue'
 import LoingView from '../views/login/index.vue'
 import HomeView from '../views/home/index.vue'
@@ -7,7 +8,8 @@ import ProfileView from '../views/profile/index.vue'
 import RecommendView from '../views/recommend/index.vue'
 import RecipeDetailView from '../views/recipes/recipe.vue'
 import RecipeCreateView from '../views/recipes/RecipeCreate.vue'
-import { ElMessage } from 'element-plus'
+import AdminRecipesView from '../views/admin/recipes.vue'
+import { isAdminFromLoginStorage } from '../utils/auth'
 
 const routes = [
   {
@@ -31,7 +33,6 @@ const routes = [
         path: 'profile',
         component: ProfileView,
       },
-
       {
         path: '/recipe/:id',
         name: 'RecipeDetail',
@@ -51,6 +52,12 @@ const routes = [
         props: true,
         meta: { requiresAuth: true },
       },
+      {
+        path: 'admin/recipes',
+        name: 'AdminRecipes',
+        component: AdminRecipesView,
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
     ],
   },
   {
@@ -65,30 +72,26 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  // 1. 判断你要去的页面，门上有没有贴 "requiresAuth" 的标签
   if (to.meta.requiresAuth) {
-    // 2. 去包里（localStorage）翻一下有没有 Token
-    const token = localStorage.getItem('loginUser') // 注意：这里换成你实际存 Token 的 key
+    const token = localStorage.getItem('loginUser')
     const exp = localStorage.getItem('token_exp')
-    if (token && exp && Date.now() < exp) {
-      // ✅ 有 Token，说明登录过了，放行！打开页面！
-      next()
-    } else {
-      // ❌ 没有 Token，没登录！
-      // 提示用户 (如果你引入了 Element Plus 可以弹个窗)
-      ElMessage.warning('请先登录后再发布食谱哦~')
-
-      // 强制一脚踢回登录页
-      // 并且偷偷把原本想去的路径记录下来，留给下一步用
+    if (!(token && exp && Date.now() < exp)) {
+      ElMessage.warning('Please login first.')
       next({
         path: '/login',
         query: { redirect: to.fullPath },
       })
+      return
     }
-  } else {
-    // 3. 门上没贴标签（比如首页、登录页），直接放行
-    next()
   }
+
+  if (to.meta.requiresAdmin && !isAdminFromLoginStorage()) {
+    ElMessage.error('Admin access only.')
+    next('/')
+    return
+  }
+
+  next()
 })
 
 export default router
