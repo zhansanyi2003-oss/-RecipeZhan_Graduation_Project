@@ -257,15 +257,13 @@ public class RecipeCardServiceImpl implements RecipeCardService {
             if (!prefs.getIngredients().isEmpty()) {
                 for (String ingredient : prefs.getIngredients()) {
                     scoreFunctions.add(FunctionScore.of(fs -> fs
-                            // 注意：因为食材在 ES 里可能是个长文本（比如 "300g Chicken Breast"），
-                            // 所以这里用 match 模糊匹配，而不是 term 精确匹配
                             .filter(f -> f.match(m -> m.field("ingredients").query(ingredient)))
                             .weight(1.8) // 命中一个喜欢的食材，权重直接 x 1.8 倍！
                     ));
                 }
             }
 
-            // 3. 厨艺匹配加分 (Skill Level)：给适合他厨艺的菜稍微提点分
+
             if (prefs.getSkillLevel() != null) {
                 String difficulty = prefs.getSkillLevel().equals("Beginner") ? "EASY" :
                         (prefs.getSkillLevel().equals("Intermediate") ? "MEDIUM" : "HARD");
