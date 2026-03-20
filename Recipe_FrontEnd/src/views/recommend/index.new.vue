@@ -7,15 +7,12 @@ import { useRouter } from 'vue-router'
 import RecipeCardGrid from '../../component/RecipeCardGrid.vue'
 import RecipeSwitch from '../../component/recipeSwitch.vue'
 import {
-  getRecommendationBehaviorApi,
-  getRecommendationExploreCuisinesApi,
-  getRecommendationExploreFlavoursApi,
-  getRecommendationExplorePreviewApi,
-  getRecommendationPreferencesApi,
-  getRecommendationRightNowApi,
-  getRecommendationSavedSeedApi,
-  getRecommendationTasteApi,
-} from '../../api/recipe.js'
+  getAllCuisinesApi,
+  getAllFlavoursApi,
+  getCarouselCardApi,
+  getRecipeCardApi,
+} from '../../api/recipeCard'
+import { getPreferenceApi, getSavedRecipeApi } from '../../api/user'
 import { parsePagedResult } from '../../utils/paginationResult.js'
 import { buildExploreTags, buildRecommendationSections } from '../../utils/recommendationPageState.js'
 
@@ -51,6 +48,22 @@ const uniqueById = (items) => {
   })
 }
 
+const toSliceResult = (list, page, pageSize) => {
+  const start = page * pageSize
+  const end = start + pageSize
+  const content = list.slice(start, end)
+  const hasNext = end < list.length
+
+  return {
+    code: 1,
+    data: {
+      content,
+      hasNext,
+      last: !hasNext,
+    },
+  }
+}
+
 const loading = ref(true)
 const exploreLoading = ref(false)
 const sectionVersion = ref(0)
@@ -59,6 +72,9 @@ const preferences = ref(emptyPreferences())
 const savedRecipe = ref(null)
 const sections = ref(buildRecommendationSections())
 
+const rightNowRecipes = ref([])
+const behaviorRecipes = ref([])
+const tasteRecipes = ref([])
 const exploreTags = ref([])
 const activeExploreTag = ref(null)
 const explorePreviewRecipes = ref([])
@@ -83,15 +99,31 @@ const openExplore = () => {
   router.push('/recipe')
 }
 
+const syncLikeState = (list, recipeId, newStatus) =>
+  list.map((item) => (item.id === recipeId ? { ...item, isLiked: newStatus } : item))
+
 const handleLikeToggled = (recipeId, newStatus) => {
-  explorePreviewRecipes.value = explorePreviewRecipes.value.map((item) =>
-    item.id === recipeId ? { ...item, isLiked: newStatus } : item,
-  )
+  rightNowRecipes.value = syncLikeState(rightNowRecipes.value, recipeId, newStatus)
+  behaviorRecipes.value = syncLikeState(behaviorRecipes.value, recipeId, newStatus)
+  tasteRecipes.value = syncLikeState(tasteRecipes.value, recipeId, newStatus)
+  explorePreviewRecipes.value = syncLikeState(explorePreviewRecipes.value, recipeId, newStatus)
 }
 
-const fetchRightNowPage = (page, pageSize) => getRecommendationRightNowApi(page, pageSize)
-const fetchBehaviorPage = (page, pageSize) => getRecommendationBehaviorApi(page, pageSize)
-const fetchTastePage = (page, pageSize) => getRecommendationTasteApi(page, pageSize)
+const fetchRightNowPage = async (page, pageSize) => toSliceResult(rightNowRecipes.value, page, pageSize)
+const fetchBehaviorPage = async (page, pageSize) => toSliceResult(behaviorRecipes.value, page, pageSize)
+const fetchTastePage = async (page, pageSize) => toSliceResult(tasteRecipes.value, page, pageSize)
+
+const loadFilteredRecipes = async (filters, pageSize = 12) => {
+  const result = await getRecipeCardApi(filters, 0, pageSize)
+  return uniqueById(parsePagedResult(result).items)
+}
+
+const buildExploreFilters = (tag) => {
+  if (!tag) return {}
+  if (tag.type === 'cuisine') return { cuisines: [tag.value] }
+  if (tag.type === 'flavour') return { flavours: [tag.value] }
+  return {}
+}
 
 const loadExplorePreview = async (tag) => {
   if (!tag) {
@@ -104,8 +136,7 @@ const loadExplorePreview = async (tag) => {
   activeExploreTag.value = tag
 
   try {
-    const result = await getRecommendationExplorePreviewApi(tag)
-    explorePreviewRecipes.value = uniqueById(parsePagedResult(result).items)
+    explorePreviewRecipes.value = await loadFilteredRecipes(buildExploreFilters(tag), 4)
   } catch (error) {
     console.error(error)
     explorePreviewRecipes.value = []
@@ -126,8 +157,7 @@ const initializeExploreMode = async (availableCuisines, availableFlavours) => {
 
   for (const tag of exploreTags.value) {
     try {
-      const result = await getRecommendationExplorePreviewApi(tag)
-      const items = uniqueById(parsePagedResult(result).items)
+      const items = await loadFilteredRecipes(buildExploreFilters(tag), 4)
       if (items.length) {
         activeExploreTag.value = tag
         explorePreviewRecipes.value = items
@@ -143,7 +173,7 @@ const initializeExploreMode = async (availableCuisines, availableFlavours) => {
 
 const loadSavedSeed = async () => {
   try {
-    const result = await getRecommendationSavedSeedApi()
+    const result = await getSavedRecipeApi(0, 1)
     const parsed = parsePagedResult(result)
     return parsed.items[0] || null
   } catch (error) {
@@ -154,7 +184,7 @@ const loadSavedSeed = async () => {
 
 const loadPreferences = async () => {
   try {
-    const result = await getRecommendationPreferencesApi()
+    const result = await getPreferenceApi()
     if (result.code && result.data) {
       return normalizePreferences(result.data)
     }
@@ -165,10 +195,23 @@ const loadPreferences = async () => {
   return emptyPreferences()
 }
 
+const loadRightNowRecipes = async () => {
+  try {
+    const result = await getCarouselCardApi()
+    if (result.code && Array.isArray(result.data)) {
+      return result.data
+    }
+  } catch (error) {
+    console.error(error)
+  }
+
+  return []
+}
+
 const loadAvailableTastes = async () => {
   const [cuisineResult, flavourResult] = await Promise.allSettled([
-    getRecommendationExploreCuisinesApi(),
-    getRecommendationExploreFlavoursApi(),
+    getAllCuisinesApi(),
+    getAllFlavoursApi(),
   ])
 
   return {
@@ -179,18 +222,50 @@ const loadAvailableTastes = async () => {
   }
 }
 
+const loadBehaviorRecipes = async (seedRecipe) => {
+  if (!seedRecipe) return []
+
+  const filters = {}
+  if (Array.isArray(seedRecipe.cuisines) && seedRecipe.cuisines.length) {
+    filters.cuisines = seedRecipe.cuisines.slice(0, 2)
+  } else if (seedRecipe.title) {
+    filters.title = seedRecipe.title
+  }
+
+  if (!Object.keys(filters).length) return []
+
+  const items = await loadFilteredRecipes(filters, 12)
+  return items.filter((item) => item.id !== seedRecipe.id)
+}
+
+const loadTasteRecipes = async (currentPreferences) => {
+  const filters = {}
+
+  if (currentPreferences.cuisines.length) filters.cuisines = currentPreferences.cuisines
+  if (currentPreferences.flavours.length) filters.flavours = currentPreferences.flavours
+  if (currentPreferences.dietary.length) filters.dietTypes = currentPreferences.dietary
+
+  if (!Object.keys(filters).length) return []
+
+  return loadFilteredRecipes(filters, 12)
+}
+
 const loadRecommendationPage = async () => {
   loading.value = true
 
   try {
-    const [loadedPreferences, loadedSavedRecipe, availableTastes] = await Promise.all([
+    const [loadedPreferences, loadedSavedRecipe, loadedRightNow, availableTastes] = await Promise.all([
       loadPreferences(),
       loadSavedSeed(),
+      loadRightNowRecipes(),
       loadAvailableTastes(),
     ])
 
     preferences.value = loadedPreferences
     savedRecipe.value = loadedSavedRecipe
+    rightNowRecipes.value = loadedRightNow
+    behaviorRecipes.value = []
+    tasteRecipes.value = []
     exploreTags.value = []
     activeExploreTag.value = null
     explorePreviewRecipes.value = []
@@ -200,10 +275,27 @@ const loadRecommendationPage = async () => {
       savedRecipe: loadedSavedRecipe,
     })
 
-    if (sectionMap.value.taste?.mode === 'explore') {
-      await initializeExploreMode(availableTastes.cuisines, availableTastes.flavours)
+    const pendingLoads = []
+
+    if (sectionMap.value.behavior?.mode === 'personalized') {
+      pendingLoads.push(
+        loadBehaviorRecipes(loadedSavedRecipe).then((items) => {
+          behaviorRecipes.value = items
+        }),
+      )
     }
 
+    if (sectionMap.value.taste?.mode === 'personalized') {
+      pendingLoads.push(
+        loadTasteRecipes(loadedPreferences).then((items) => {
+          tasteRecipes.value = items
+        }),
+      )
+    } else {
+      pendingLoads.push(initializeExploreMode(availableTastes.cuisines, availableTastes.flavours))
+    }
+
+    await Promise.all(pendingLoads)
     sectionVersion.value += 1
   } catch (error) {
     console.error(error)
@@ -258,14 +350,13 @@ onMounted(() => {
 
         <section class="recomm-section">
           <RecipeSwitch
-            v-if="sectionMap.behavior?.mode === 'personalized'"
+            v-if="sectionMap.behavior?.mode === 'personalized' && behaviorRecipes.length"
             :key="`behavior-${sectionVersion}`"
             :title="sectionMap.behavior.title"
             :subtitle="sectionMap.behavior.subtitle"
             :fetch-page="fetchBehaviorPage"
             :pool-size="12"
             :batch-size="4"
-            empty-text="Save a few more recipes so we can find stronger matches for this section."
             @like-toggled="handleLikeToggled"
           />
 
@@ -303,14 +394,13 @@ onMounted(() => {
 
         <section class="recomm-section">
           <RecipeSwitch
-            v-if="sectionMap.taste?.mode === 'personalized'"
+            v-if="sectionMap.taste?.mode === 'personalized' && tasteRecipes.length"
             :key="`taste-${sectionVersion}`"
             :title="sectionMap.taste.title"
             :subtitle="sectionMap.taste.subtitle"
             :fetch-page="fetchTastePage"
             :pool-size="12"
             :batch-size="4"
-            empty-text="Update your taste preferences so we can turn this section into a stronger match."
             @like-toggled="handleLikeToggled"
           />
 

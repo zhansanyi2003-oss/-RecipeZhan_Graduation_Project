@@ -13,6 +13,8 @@ Recipe_BackEnd/*.iml
 
 uploads/
 Dokumentum/
+.worktrees/
+.superpowers/
 
 # --- 前端 (Vue / Node) ---
 Recipe_FrontEnd/node_modules/
