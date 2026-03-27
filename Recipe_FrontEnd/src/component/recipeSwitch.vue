@@ -88,7 +88,11 @@ defineExpose({
         </h2>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
-      <el-button color="#4ea685" round plain :loading="loading" @click="switchBatch">
+      <el-button
+        class="btn-ui btn-ui--outline btn-ui--section"
+        :loading="loading"
+        @click="switchBatch"
+      >
         {{ switchButtonText }}
       </el-button>
     </div>
@@ -142,7 +146,7 @@ defineExpose({
 }
 
 .title-icon {
-  color: #4ea685;
+  color: var(--color-primary);
   line-height: 1;
 }
 

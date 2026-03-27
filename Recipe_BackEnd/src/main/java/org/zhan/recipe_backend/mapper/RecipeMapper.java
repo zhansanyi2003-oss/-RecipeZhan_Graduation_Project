@@ -8,12 +8,10 @@ import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
 import org.zhan.recipe_backend.entity.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = UserMapper.class)
 public interface RecipeMapper {
 
-    // ==========================================
-    // 1. 卡片 DTO 转换 (给搜索列表页用)
-    // ==========================================
+
     @Mapping(source = "recipeFlavours", target = "flavours")
     @Mapping(source = "recipeCourses", target = "courses")
     @Mapping(source = "recipeCuisines", target = "cuisines")
@@ -37,17 +35,8 @@ public interface RecipeMapper {
     @Mapping(target = "isLiked", ignore = true)
     RecipeCardDto toCardDto(Recipe recipe);
 
-
-
-
     @Mapping(source = "ingredient.name", target = "name")
     IngredientDto toIngredientDto(Recipe_Ingredient ri);
-
-
-
-    // ==========================================
-    // 3. 字典表黑魔法提取区 (小对象 -> 纯字符串)
-    // ==========================================
 
     default String mapFlavour(Recipe_Flavour rf) {
         if (rf == null || rf.getFlavour() == null) return null;

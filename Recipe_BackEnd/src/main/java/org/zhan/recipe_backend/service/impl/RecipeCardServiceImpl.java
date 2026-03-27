@@ -165,7 +165,6 @@ public class RecipeCardServiceImpl implements RecipeCardService {
                 .withQuery(query)
                 .withMaxResults(5)
                 .build();
-
         SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);
         return DocToDto(searchHits);
     }
@@ -465,7 +464,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
                 .build();
 
         SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);
-        List<RecipeCardDto> cardDtoList = DocToDto(searchHits);
+        var cardDtoList = DocToDto(searchHits);
 
         boolean hasNext = cardDtoList.size() > pageSize;
         List<RecipeCardDto> content = hasNext ? cardDtoList.subList(0, pageSize) : cardDtoList;

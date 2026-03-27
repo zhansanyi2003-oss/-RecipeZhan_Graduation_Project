@@ -257,9 +257,9 @@ watch(
         </div>
       </div>
       <div class="header-right">
-        <el-button round size="large" class="edit-btn">
+        <el-button size="large" class="edit-btn btn-ui btn-ui--outline">
           <el-icon><Edit /></el-icon>
-          <span style="margin-left: 6px">Edit Profile</span>
+          Edit Profile
         </el-button>
       </div>
     </div>
@@ -268,9 +268,12 @@ watch(
       <el-tabs v-model="activeTab" class="modern-tabs" @tab-change="handleTabChange">
         <el-tab-pane label="My Recipes" name="myRecipes">
           <div class="mobile-myrecipe-create">
-            <el-button color="#4ea685" class="mobile-create-btn" round @click="router.push('/recipe/create')">
+            <el-button
+              class="mobile-create-btn btn-ui btn-ui--brand btn-ui--wide"
+              @click="router.push('/recipe/create')"
+            >
               <el-icon><Plus /></el-icon>
-              <span style="margin-left: 6px">Create New Recipe</span>
+              Create New Recipe
             </el-button>
           </div>
 
@@ -288,7 +291,7 @@ watch(
             <template #item="{ recipe, onLikeToggled }">
               <div class="my-recipe-item">
                 <RecipeCard :data="recipe" @like-toggled="onLikeToggled" />
-                <el-button class="edit-recipe-btn" round @click="goToEditRecipe(recipe.id)">
+                <el-button class="edit-recipe-btn btn-ui btn-ui--outline" @click="goToEditRecipe(recipe.id)">
                   Edit Recipe
                 </el-button>
               </div>
@@ -309,7 +312,10 @@ watch(
                     <el-icon :size="40" color="#4ea685"><Plus /></el-icon>
                     <span>Create New Recipe</span>
                   </div>
-                  <el-button class="edit-recipe-btn create-card-spacer" round aria-hidden="true">
+                  <el-button
+                    class="edit-recipe-btn btn-ui btn-ui--outline create-card-spacer"
+                    aria-hidden="true"
+                  >
                     Edit Recipe
                   </el-button>
                 </div>
@@ -332,7 +338,7 @@ watch(
             <template #empty>
               <div class="empty-state-container">
                 <el-empty description="You haven't saved any recipes yet 🥺" image-size="200">
-                  <el-button type="primary" @click="router.push('/recipe')">
+                  <el-button class="btn-ui btn-ui--brand" @click="router.push('/recipe')">
                     Go Explore Recipes
                   </el-button>
                 </el-empty>
@@ -440,13 +446,16 @@ watch(
               </el-form-item>
 
               <div class="form-actions">
-                <el-button size="large" class="reset-pref-btn" @click="handleResetPreferences">
+                <el-button
+                  size="large"
+                  class="reset-pref-btn btn-ui btn-ui--outline"
+                  @click="handleResetPreferences"
+                >
                   Reset
                 </el-button>
                 <el-button
-                  color="#4ea685"
                   size="large"
-                  class="save-pref-btn"
+                  class="save-pref-btn btn-ui btn-ui--brand"
                   @click="handleSavePreferences"
                 >
                   Save My Food DNA
@@ -553,13 +562,7 @@ watch(
 }
 
 .edit-btn {
-  font-weight: bold;
-  border-color: #dcdfe6;
-}
-.edit-btn:hover {
-  color: #4ea685;
-  border-color: #4ea685;
-  background-color: #eef7f4;
+  padding-inline: 18px;
 }
 
 /* ================= Tabs Styling ================= */
@@ -620,14 +623,7 @@ watch(
 }
 
 .edit-recipe-btn {
-  border-color: #d5ebe1;
-  color: #4ea685;
-  font-weight: 600;
-}
-
-.edit-recipe-btn:hover {
-  background-color: #eef7f4;
-  border-color: #4ea685;
+  width: 100%;
 }
 
 .create-recipe-item {
@@ -679,8 +675,6 @@ watch(
 
 .mobile-create-btn {
   width: 100%;
-  min-height: 44px;
-  font-weight: 700;
 }
 
 .empty-state-container {
@@ -802,28 +796,14 @@ watch(
 
 /* 🌟 Reset 按钮的高级感样式 */
 .reset-pref-btn {
-  border-radius: 12px;
-  padding: 24px 40px;
+  padding: 0 30px;
   font-size: 16px;
-  transition: transform 0.2s;
-}
-.reset-pref-btn:hover {
-  transform: translateY(-2px);
-  color: #4ea685;
-  border-color: #4ea685;
-  background-color: #eef7f4;
 }
 
 /* 原有的 Save 按钮样式保持不变，但如果你之前没加悬浮动画，可以确保有下面这句 */
 .save-pref-btn {
-  border-radius: 12px;
-  padding: 24px 80px;
+  padding: 0 34px;
   font-size: 18px;
-  box-shadow: 0 8px 20px rgba(78, 166, 133, 0.2);
-  transition: transform 0.2s;
-}
-.save-pref-btn:hover {
-  transform: translateY(-2px);
 }
 
 /* Responsive */

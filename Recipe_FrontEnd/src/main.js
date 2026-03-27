@@ -8,6 +8,8 @@ import ElementPlus from 'element-plus'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import './styles/tokens.css'
+import './styles/buttons.css'
 
 const app = createApp(App)
 

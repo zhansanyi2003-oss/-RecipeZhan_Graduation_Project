@@ -105,8 +105,8 @@ const deleteRecipe = async (id, title) => {
         </template>
       </el-input>
       <div class="toolbar-actions">
-        <el-button color="#4ea685" size="large" round @click="applySearch">Search</el-button>
-        <el-button size="large" round plain @click="resetSearch">Reset</el-button>
+        <el-button class="btn-ui btn-ui--brand" size="large" @click="applySearch">Search</el-button>
+        <el-button class="btn-ui btn-ui--outline" size="large" @click="resetSearch">Reset</el-button>
       </div>
     </section>
 
@@ -143,18 +143,16 @@ const deleteRecipe = async (id, title) => {
             </div>
             <div class="admin-actions">
               <el-button
-                type="primary"
                 size="small"
-                class="admin-action-btn edit-btn"
+                class="admin-action-btn edit-btn btn-ui btn-ui--brand btn-ui--compact"
                 :icon="Edit"
                 @click.stop="goToEditRecipe(recipe.id)"
               >
                 Edit
               </el-button>
               <el-button
-                type="danger"
                 size="small"
-                class="admin-action-btn delete-btn"
+                class="admin-action-btn delete-btn btn-ui btn-ui--danger btn-ui--compact"
                 :icon="Delete"
                 @click.stop="deleteRecipe(recipe.id, recipe.title)"
               >
@@ -295,46 +293,15 @@ const deleteRecipe = async (id, title) => {
 }
 
 .admin-action-btn {
-  min-height: 38px;
-  border-radius: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease;
+  width: 100%;
 }
 
 .edit-btn {
-  border: none !important;
-  color: #ffffff !important;
-  background: linear-gradient(135deg, #4ea685 0%, #5fbc98 100%) !important;
-  box-shadow: 0 6px 14px rgba(78, 166, 133, 0.28);
-}
-
-.edit-btn:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, #459a7a 0%, #53b38f 100%) !important;
-  box-shadow: 0 8px 16px rgba(78, 166, 133, 0.32);
+  justify-content: center;
 }
 
 .delete-btn {
-  color: #b63c3c !important;
-  border: 1px solid #efb0b0 !important;
-  background: linear-gradient(180deg, #fffefe 0%, #fff5f5 100%) !important;
-}
-
-.delete-btn:hover {
-  transform: translateY(-1px);
-  color: #a62d2d !important;
-  border-color: #e99595 !important;
-  background: linear-gradient(180deg, #fff8f8 0%, #ffecec 100%) !important;
-  box-shadow: 0 6px 12px rgba(214, 93, 93, 0.16);
-}
-
-.admin-action-btn:active {
-  transform: translateY(0);
+  justify-content: center;
 }
 
 @media (max-width: 768px) {

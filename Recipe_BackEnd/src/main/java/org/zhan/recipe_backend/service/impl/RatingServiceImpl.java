@@ -74,6 +74,8 @@ public class RatingServiceImpl {
         newAvg = Math.round(newAvg * 10.0) / 10.0;
         recipe.setRatingCount(newCount);
         recipe.setAverageRating(newAvg);
+        recipeRepository.save(recipe);
+        recipeService.syncToElasticsearch(recipe);
         return new RatingStatsDto(newAvg,newCount);
 
     }

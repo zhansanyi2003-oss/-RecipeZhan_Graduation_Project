@@ -59,22 +59,26 @@ onBeforeUnmount(() => {
         <p class="hero-subtitle">Discover thousands of healthy and delicious recipes.</p>
 
         <div class="hero-search-box">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="Search for ingredients, dishes, or cuisines..."
-            size="large"
-            class="massive-input"
-            @keyup.enter="handleHeroSearch"
-          >
-            <template #prefix>
-              <el-icon class="search-icon"><Search /></el-icon>
-            </template>
-            <template #append>
-              <el-button color="#4ea685" class="search-btn" @click="handleHeroSearch">
-                Search
-              </el-button>
-            </template>
-          </el-input>
+          <div class="hero-search-shell">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="Search for ingredients, dishes, or cuisines..."
+              size="large"
+              class="massive-input hero-main-input"
+              @keyup.enter="handleHeroSearch"
+            >
+              <template #prefix>
+                <el-icon class="search-icon"><Search /></el-icon>
+              </template>
+            </el-input>
+            <el-button class="search-btn btn-ui btn-ui--brand btn-ui--large" @click="handleHeroSearch">
+              <span>Search</span>
+              <el-icon class="search-btn-icon"><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+          <p class="hero-search-hint">
+            Try "pasta", "chicken", or "Italian" to jump straight into results.
+          </p>
         </div>
       </div>
     </section>
@@ -124,11 +128,7 @@ onBeforeUnmount(() => {
         />
         <div class="explore-more-wrapper">
           <el-button
-            color="#4ea685"
-            size="large"
-            round
-            plain
-            class="explore-btn"
+            class="explore-btn btn-ui btn-ui--outline btn-ui--large"
             @click="router.push('/recipe')"
           >
             Explore All Recipes <el-icon class="ml-2"><ArrowRight /></el-icon>
@@ -192,29 +192,76 @@ onBeforeUnmount(() => {
 
 /* 巨型搜索框样式 */
 .hero-search-box {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border-radius: 50px;
-  overflow: hidden;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.hero-search-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.09) 100%);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.hero-search-shell::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 100%);
+  pointer-events: none;
+}
+
+.hero-search-shell:focus-within {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.22),
+    0 0 0 4px rgba(255, 255, 255, 0.08);
 }
 :deep(.massive-input .el-input__wrapper) {
-  padding: 8px 20px;
-  font-size: 1.1rem;
-}
-:deep(.massive-input .el-input-group__append) {
-  background-color: #4ea685;
-  border: none;
-  padding: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 14px !important;
+  min-height: 58px;
+  border-radius: 999px;
+  font-size: 1.08rem;
 }
 .search-btn {
-  height: 100%;
-  border-radius: 0;
-  padding: 0 30px;
-  font-size: 1.1rem;
-  font-weight: bold;
+  position: relative;
+  z-index: 1;
+  min-width: 150px;
+  padding-inline: 24px;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 .search-icon {
   font-size: 20px;
-  color: #4ea685;
+  color: var(--color-primary);
+}
+
+.search-btn-icon {
+  font-size: 16px;
+}
+
+.hero-search-hint {
+  margin: 14px 0 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.01em;
 }
 
 /* ================== 主体内容区 ================== */
@@ -237,7 +284,7 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 .view-all {
-  color: #4ea685;
+  color: var(--color-primary);
   cursor: pointer;
   font-weight: 600;
   display: flex;
@@ -301,8 +348,7 @@ onBeforeUnmount(() => {
 }
 .explore-btn {
   font-size: 1.1rem;
-  padding: 24px 40px;
-  font-weight: bold;
+  padding-inline: 28px;
 }
 .ml-2 {
   margin-left: 8px;
@@ -319,6 +365,10 @@ onBeforeUnmount(() => {
 
   .hero-title {
     font-size: 2.6rem;
+  }
+
+  .hero-search-box {
+    max-width: 680px;
   }
 
   .section-header h2 {
@@ -347,18 +397,34 @@ onBeforeUnmount(() => {
   }
 
   .hero-search-box {
-    border-radius: 14px;
+    max-width: 100%;
   }
 
-  :deep(.massive-input .el-input__wrapper) {
-    padding: 6px 12px;
-    font-size: 16px;
+  .hero-search-shell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 24px;
   }
 
   .search-btn {
-    min-height: 44px;
-    padding: 0 16px;
+    width: 100%;
+    min-height: 46px;
+    padding-inline: 18px;
     font-size: 1rem;
+  }
+
+  :deep(.massive-input .el-input__wrapper) {
+    min-height: 50px;
+    padding: 0 10px !important;
+    font-size: 16px;
+  }
+
+  .hero-search-hint {
+    margin-top: 10px;
+    font-size: 0.88rem;
+    line-height: 1.45;
   }
 
   .main-container {

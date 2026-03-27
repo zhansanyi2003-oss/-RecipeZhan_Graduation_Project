@@ -119,9 +119,7 @@ onMounted(async () => {
           <div class="right-section desktop-actions">
             <template v-if="userInfo.isLoggedIn">
               <el-button
-                color="#4ea685"
-                class="create-btn"
-                round
+                class="create-btn btn-ui btn-ui--brand"
                 @click="navigate('/recipe/create')"
               >
                 <el-icon><Plus /></el-icon> Create Recipe
@@ -132,7 +130,7 @@ onMounted(async () => {
                   <el-avatar
                     :size="38"
                     :src="userInfo.avatarUrl || undefined"
-                    style="background: #4ea685; font-weight: bold"
+                    class="theme-avatar-fallback"
                     @error="() => (userInfo.avatarUrl = '')"
                   >
                     {{ userInitial }}
@@ -157,7 +155,7 @@ onMounted(async () => {
             </template>
 
             <template v-else>
-              <el-button color="#4ea685" class="signup-btn" round @click="goToLogin"
+              <el-button class="signup-btn btn-ui btn-ui--brand" @click="goToLogin"
                 >Sign up</el-button
               >
             </template>
@@ -202,7 +200,7 @@ onMounted(async () => {
           <el-button class="mobile-danger" text @click="handleLogout">Log Out</el-button>
         </template>
         <template v-else>
-          <el-button class="mobile-primary" color="#4ea685" round @click="goToLogin"
+          <el-button class="mobile-primary btn-ui btn-ui--brand btn-ui--wide" @click="goToLogin"
             >Sign up</el-button
           >
         </template>
@@ -297,15 +295,7 @@ onMounted(async () => {
 
 .create-btn,
 .signup-btn {
-  min-height: 44px;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(78, 166, 133, 0.25);
-  transition: transform 0.2s ease;
-}
-
-.create-btn:hover,
-.signup-btn:hover {
-  transform: translateY(-2px);
+  padding-inline: 18px;
 }
 
 .avatar-wrapper {

@@ -232,7 +232,7 @@ onMounted(() => {
           </div>
         </div>
         <div class="banner-right">
-          <el-button color="#4ea685" class="pref-btn" round @click="openPreferences">
+          <el-button class="pref-btn btn-ui btn-ui--brand" @click="openPreferences">
             <el-icon><Setting /></el-icon>
             Edit Preferences
           </el-button>
@@ -274,10 +274,10 @@ onMounted(() => {
               <h2 class="section-title">{{ sectionMap.behavior.title }}</h2>
               <p class="section-subtitle">{{ sectionMap.behavior.subtitle }}</p>
               <div class="cta-actions">
-                <el-button color="#4ea685" round @click="openPreferences">
+                <el-button class="btn-ui btn-ui--brand" @click="openPreferences">
                   Set Preferences
                 </el-button>
-                <el-button round plain color="#4ea685" @click="openExplore">
+                <el-button class="btn-ui btn-ui--outline" @click="openExplore">
                   Save Recipes You Like
                 </el-button>
               </div>
@@ -428,9 +428,7 @@ onMounted(() => {
 }
 
 .pref-btn {
-  padding: 12px 24px;
-  font-weight: bold;
-  box-shadow: 0 4px 10px rgba(78, 166, 133, 0.2);
+  padding-inline: 22px;
 }
 
 .page-loading,
