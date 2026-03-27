@@ -12,9 +12,6 @@ import org.zhan.recipe_backend.service.RecipeCardService;
 import org.zhan.recipe_backend.service.RecipeService;
 import org.zhan.recipe_backend.service.impl.RatingServiceImpl;
 
-import java.time.LocalTime;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/recipes")
 public class RecipeController {
@@ -52,7 +49,7 @@ public class RecipeController {
         return Result.Success(recipeCardService.getIngredients());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public Result getRecipeDetails(@PathVariable Long id) {
         return Result.Success(recipeService.getRecipes(id));
 
@@ -61,14 +58,34 @@ public class RecipeController {
 
 
     @GetMapping("/recc")
-    public Result getReccomendRecipes(@RequestParam Integer localHour) {
-        return Result.Success(recipeCardService.getPersonalizedRecommendations(localHour));
+    public Result getReccomendRecipes(@RequestParam Integer localHour,
+                                      @RequestParam(defaultValue = "0") Integer page,
+                                      @RequestParam(defaultValue = "12") Integer pageSize) {
+        return Result.Success(recipeCardService.getPersonalizedRecommendations(localHour, page, pageSize));
 
     }
+
+    @GetMapping("/hero")
+    public Result getHeroRecommendations(@RequestParam Integer localHour) {
+        return Result.Success(recipeCardService.getHeroRecommendations(localHour));
+    }
+
     @GetMapping("/trending")
     public Result getTrendingRecipes(@RequestParam(defaultValue = "0") Integer page,@RequestParam(defaultValue = "12") Integer pageSize) {
         return Result.Success(recipeCardService.getTrendingRecipes(page,pageSize));
 
+    }
+
+    @GetMapping("/behavior")
+    public Result getBehaviorRecommendations(@RequestParam(defaultValue = "0") Integer page,
+                                             @RequestParam(defaultValue = "12") Integer pageSize) {
+        return Result.Success(recipeCardService.getBehaviorRecommendations(page, pageSize));
+    }
+
+    @GetMapping("/taste")
+    public Result getTasteRecommendations(@RequestParam(defaultValue = "0") Integer page,
+                                          @RequestParam(defaultValue = "12") Integer pageSize) {
+        return Result.Success(recipeCardService.getTasteRecommendations(page, pageSize));
     }
 
 
@@ -86,7 +103,7 @@ public class RecipeController {
         return Result.Success();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public Result updateRecipe(@PathVariable Long id, @RequestBody RecipeDetailDto dto) {
         recipeService.updateRecipe(id, dto);
         return Result.Success();

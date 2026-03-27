@@ -85,7 +85,6 @@ public class UserServiceImpl implements UserService {
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(userDto.getUsername(), userDto.getPassword())
         );
-        // 2. 账号密码对了，把用户信息拿出来
         RecipeUserDetails userDetails = (RecipeUserDetails) auth.getPrincipal();
         User user = userDetails.getUser();
         // 3. 🌟 把 ID 塞进去生成 Token
@@ -131,7 +130,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setPreferences(preferences); // 存入 JSON
+        user.setPreferences(preferences);
         userRepository.save(user);
     }
 
@@ -151,16 +150,7 @@ public class UserServiceImpl implements UserService {
     public Boolean toggleSaveRecipe(Long recipeId,Boolean status) {
         Long userId =AuthUtils.getCurrentUserIdOrNull();
         if (status) {
-            // 如果要收藏，且数据库没有，直接插入一条记录
-            if (!userSavedRepository.existsByUserIdAndRecipeId(userId, recipeId)) {
-                User user = userRepository.getReferenceById(userId); // 代理对象，不查库
-                Recipe recipe = recipeRepository.getReferenceById(recipeId); // 代理对象，不查库
-
-                UserSavedRecipes savedRecipe = new UserSavedRecipes();
-                savedRecipe.setUser(user);
-                savedRecipe.setRecipe(recipe);
-                userSavedRepository.save(savedRecipe);
-            }
+            userSavedRepository.saveRecipe(recipeId,userId);
             return true;
         } else {
             userSavedRepository.deleteByUserIdAndRecipeId(userId, recipeId);
@@ -169,8 +159,6 @@ public class UserServiceImpl implements UserService {
 
 
     }
-
-
 
     @Override
     public UserDto getUserById() {
@@ -182,7 +170,6 @@ public class UserServiceImpl implements UserService {
         userDto.setCreatedCount(recipeRepository.countByAuthorId(currentUserId));
 
         return userDto;
-
 
     }
 

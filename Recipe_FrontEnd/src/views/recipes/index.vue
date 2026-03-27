@@ -228,7 +228,7 @@ watch(
 
         <div class="ingredient-tags-area">
           <span class="tags-label">
-            <el-button color="#4ea685" style="color: white" :icon="Search"
+            <el-button class="btn-ui btn-ui--brand ingredient-label-btn" :icon="Search"
               >Ingredients:</el-button
             ></span
           >
@@ -285,10 +285,10 @@ watch(
         </div>
 
         <div class="search-btn-wrapper">
-          <button class="search-btn" @click="handleSearch">
+          <el-button class="search-btn btn-ui btn-ui--outline btn-ui--large" @click="handleSearch">
             <el-icon class="btn-icon"><Notebook /></el-icon>
             Searching
-          </button>
+          </el-button>
         </div>
       </div>
     </div>
@@ -391,6 +391,10 @@ watch(
   color: #ffe0b2;
   margin-right: 8px;
 }
+
+.ingredient-label-btn {
+  min-height: 36px;
+}
 .ingredient-tag {
   border: none;
   border-radius: 12px;
@@ -491,26 +495,12 @@ watch(
   justify-content: center;
 }
 .search-btn {
-  background-color: white;
-  color: #4ea685;
-  border: none;
-  border-radius: 50px;
   padding: 12px 60px;
   font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
   gap: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s;
-  min-height: 44px;
-}
-.search-btn:hover {
-  transform: scale(1.05);
 }
 .btn-icon {
-  background-color: #4ea685;
+  background-color: var(--color-primary);
   color: white;
   border-radius: 50%;
   padding: 4px;

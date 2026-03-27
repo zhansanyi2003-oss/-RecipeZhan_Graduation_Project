@@ -8,6 +8,7 @@ const props = defineProps({
   subtitle: { type: String, default: '' },
   titleIcon: { type: String, default: '' },
   switchButtonText: { type: String, default: 'Show more' },
+  emptyText: { type: String, default: 'No recipes available right now.' },
   fetchPage: { type: Function, required: true },
   poolSize: { type: Number, default: 12 },
   batchSize: { type: Number, default: 4 },
@@ -87,12 +88,21 @@ defineExpose({
         </h2>
         <p v-if="subtitle" class="section-subtitle">{{ subtitle }}</p>
       </div>
-      <el-button color="#4ea685" round plain :loading="loading" @click="switchBatch">
+      <el-button
+        class="btn-ui btn-ui--outline btn-ui--section"
+        :loading="loading"
+        @click="switchBatch"
+      >
         {{ switchButtonText }}
       </el-button>
     </div>
 
+    <div v-if="!loading && !visibleItems.length" class="empty-state">
+      <p>{{ emptyText }}</p>
+    </div>
+
     <RecipeCardGrid
+      v-else
       :recipes="visibleItems"
       :gutter="gutter"
       :xs="xs"
@@ -136,7 +146,7 @@ defineExpose({
 }
 
 .title-icon {
-  color: #4ea685;
+  color: var(--color-primary);
   line-height: 1;
 }
 
@@ -150,6 +160,15 @@ defineExpose({
   display: flex;
   justify-content: center;
   margin-top: 8px;
+}
+
+.empty-state {
+  padding: 28px 24px;
+  border: 1px solid #e4ebeb;
+  border-radius: 18px;
+  background: #fff;
+  color: #6b7280;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

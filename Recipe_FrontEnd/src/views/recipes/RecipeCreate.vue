@@ -457,11 +457,8 @@ onMounted(async () => {
                 </template>
               </draggable>
               <el-button
-                color="#eef7f4"
-                class="add-btn"
+                class="add-btn btn-ui btn-ui--soft btn-ui--wide"
                 @click="addIngredient"
-                round
-                style="color: #4ea685"
               >
                 <el-icon class="mr-1"><Plus /></el-icon> Add Ingredient
               </el-button>
@@ -529,11 +526,8 @@ onMounted(async () => {
                 </template>
               </draggable>
               <el-button
-                color="#eef7f4"
-                class="add-btn"
+                class="add-btn btn-ui btn-ui--soft btn-ui--wide"
                 @click="addStep"
-                round
-                style="color: #4ea685"
               >
                 <el-icon class="mr-1"><Plus /></el-icon> Add Next Step
               </el-button>
@@ -543,14 +537,14 @@ onMounted(async () => {
       </el-form>
 
       <div class="form-end-actions">
-        <el-button plain round class="bottom-cancel-btn" @click="router.back()">Cancel</el-button>
+        <el-button class="bottom-cancel-btn btn-ui btn-ui--outline" @click="router.back()">
+          Cancel
+        </el-button>
         <el-button
-          color="#4ea685"
-          round
           size="large"
           @click="submitRecipe"
           :loading="submitting"
-          class="publish-btn bottom-publish-btn"
+          class="publish-btn bottom-publish-btn btn-ui btn-ui--brand"
         >
           {{ submitButtonText }}
         </el-button>
@@ -591,7 +585,7 @@ onMounted(async () => {
   font-weight: 800;
 }
 .publish-btn {
-  font-weight: bold;
+  padding-inline: 28px;
 }
 
 .form-end-actions {
@@ -602,10 +596,9 @@ onMounted(async () => {
   gap: 12px;
 }
 
-  .bottom-cancel-btn,
-  .bottom-publish-btn {
+.bottom-cancel-btn,
+.bottom-publish-btn {
   min-height: 44px;
-  font-weight: 700;
 }
 
 .create-container {
@@ -908,13 +901,8 @@ onMounted(async () => {
 
 .add-btn {
   width: 100%;
-  border: none;
-  font-weight: bold;
   height: 48px;
   margin-top: 10px;
-}
-.add-btn:hover {
-  background: #d5ebe1;
 }
 .mr-1 {
   margin-right: 5px;

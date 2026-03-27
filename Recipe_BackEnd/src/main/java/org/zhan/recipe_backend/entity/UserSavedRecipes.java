@@ -7,7 +7,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_saved_recipes")
+@Table(name = "user_saved_recipes",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_user_saved_user_recipe",
+                        columnNames = {"user_id", "recipe_id"}
+                )
+        })
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,6 +22,7 @@ public class UserSavedRecipes {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

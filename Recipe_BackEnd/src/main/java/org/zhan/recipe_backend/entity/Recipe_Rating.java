@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "recipe_ratings", uniqueConstraints = {
-        // 🌟 核心：联合唯一索引，保证一个用户对一道菜只能有一个评分记录
         @UniqueConstraint(columnNames = {"user_id", "recipe_id"})
 })
 @Data

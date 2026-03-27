@@ -15,7 +15,7 @@ export const getAllIngredientsApi = () => {
 }
 export const getCarouselCardApi = () => {
   const currentLocalHour = new Date().getHours()
-  return request.get(`/recipes/recc`, {
+  return request.get(`/recipes/hero`, {
     params: {
       localHour: currentLocalHour,
     },
@@ -24,4 +24,8 @@ export const getCarouselCardApi = () => {
 
 export const getTrendingRecipesApi = (page, pageSize) => {
   return request.get(`/recipes/trending?page=${page}&pageSize=${pageSize}`)
+}
+
+export const getTasteRecommendationsApi = (page, pageSize) => {
+  return request.get(`/recipes/taste?page=${page}&pageSize=${pageSize}`)
 }
