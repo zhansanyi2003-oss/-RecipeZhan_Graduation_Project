@@ -22,9 +22,14 @@ import java.util.List;
 @AllArgsConstructor
 public class Recipe {
 
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     // 这里可以改成 @ManyToOne 关联 User 实体，为了直观先用 Long
     @ManyToOne(fetch = FetchType.LAZY)

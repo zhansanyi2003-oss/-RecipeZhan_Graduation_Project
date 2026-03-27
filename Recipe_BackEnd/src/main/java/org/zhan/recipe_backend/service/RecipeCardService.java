@@ -13,7 +13,10 @@ public interface RecipeCardService {
     List<String>  getCuisines();
 
     List<String> getIngredients();
-    List<RecipeCardDto> getPersonalizedRecommendations(Integer hour);
+    List<RecipeCardDto> getHeroRecommendations(Integer hour);
+    Slice<RecipeCardDto> getPersonalizedRecommendations(Integer hour, int page, int pageSize);
+    Slice<RecipeCardDto> getBehaviorRecommendations(int page, int pageSize);
+    Slice<RecipeCardDto> getTasteRecommendations(int page, int pageSize);
 
 
     Slice<RecipeCardDto> getTrendingRecipes(int page , int pageSize);

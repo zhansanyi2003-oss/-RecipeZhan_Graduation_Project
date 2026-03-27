@@ -1,188 +1,221 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Avatar, Setting } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
+import RecipeCardGrid from '../../component/RecipeCardGrid.vue'
 import RecipeSwitch from '../../component/recipeSwitch.vue'
+import {
+  getRecommendationBehaviorApi,
+  getRecommendationExploreCuisinesApi,
+  getRecommendationExploreFlavoursApi,
+  getRecommendationExplorePreviewApi,
+  getRecommendationPreferencesApi,
+  getRecommendationRightNowApi,
+  getRecommendationSavedSeedApi,
+  getRecommendationTasteApi,
+} from '../../api/recipe.js'
+import { parsePagedResult } from '../../utils/paginationResult.js'
+import { buildExploreTags, buildRecommendationSections } from '../../utils/recommendationPageState.js'
+
 const router = useRouter()
 
-// 模拟打开口味偏好设置 (后期可以接一个真实的抽屉或弹窗)
+const emptyPreferences = () => ({
+  dietary: [],
+  allergies: [],
+  skillLevel: '',
+  timeAvailability: '',
+  flavours: [],
+  cuisines: [],
+  ingredients: [],
+})
+
+const normalizePreferences = (value = {}) => ({
+  ...emptyPreferences(),
+  ...value,
+  dietary: Array.isArray(value.dietary) ? value.dietary : [],
+  allergies: Array.isArray(value.allergies) ? value.allergies : [],
+  flavours: Array.isArray(value.flavours) ? value.flavours : [],
+  cuisines: Array.isArray(value.cuisines) ? value.cuisines : [],
+  ingredients: Array.isArray(value.ingredients) ? value.ingredients : [],
+})
+
+const uniqueById = (items) => {
+  const seen = new Set()
+
+  return items.filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false
+    seen.add(item.id)
+    return true
+  })
+}
+
+const loading = ref(true)
+const exploreLoading = ref(false)
+const sectionVersion = ref(0)
+
+const preferences = ref(emptyPreferences())
+const savedRecipe = ref(null)
+const sections = ref(buildRecommendationSections())
+
+const exploreTags = ref([])
+const activeExploreTag = ref(null)
+const explorePreviewRecipes = ref([])
+
+const sectionMap = computed(() =>
+  Object.fromEntries(sections.value.map((section) => [section.key, section])),
+)
+
+const engineSummary = computed(() => {
+  if (sectionMap.value.behavior?.mode === 'cta' && sectionMap.value.taste?.mode === 'explore') {
+    return 'We are starting from the time of day. Save recipes or pick a taste to make this page more personal.'
+  }
+
+  return 'This page blends your saved recipes, cooking-time preferences, and taste signals to surface better ideas.'
+})
+
 const openPreferences = () => {
   router.push({ path: '/profile', query: { tab: 'preferences' } })
 }
 
-// ================== 模拟：按推荐理由分类的数据 ==================
+const openExplore = () => {
+  router.push('/recipe')
+}
 
-// 1. 应季推荐
-const seasonalRecipes = ref([
-  {
-    id: 201,
-    title: 'Spring Asparagus Salad',
-    coverImage:
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 15,
-    averageRating: 4.5,
-    ratingCount: 890,
-    isLiked: false,
-  },
-  {
-    id: 202,
-    title: 'Strawberry Shortcake',
-    coverImage:
-      'https://images.unsplash.com/photo-1464306076886-da185f6a9d05?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'MEDIUM',
-    cookingTimeMin: 40,
-    averageRating: 4.2,
-    ratingCount: 654,
-    isLiked: false,
-  },
-  {
-    id: 203,
-    title: 'Lemon Garlic Salmon',
-    coverImage:
-      'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 20,
-    averageRating: 4.7,
-    ratingCount: 1023,
-    isLiked: false,
-  },
-  {
-    id: 204,
-    title: 'Green Pea Soup',
-    coverImage:
-      'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 25,
-    averageRating: 4.1,
-    ratingCount: 432,
-    isLiked: false,
-  },
-])
+const handleLikeToggled = (recipeId, newStatus) => {
+  explorePreviewRecipes.value = explorePreviewRecipes.value.map((item) =>
+    item.id === recipeId ? { ...item, isLiked: newStatus } : item,
+  )
+}
 
-// 2. 因为你收藏了某道菜
-const basedOnSaves = ref([
-  {
-    id: 301,
-    title: 'Creamy Mushroom Pasta',
-    coverImage:
-      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'MEDIUM',
-    cookingTimeMin: 30,
-    averageRating: 4.8,
-    ratingCount: 2100,
-    isLiked: false,
-  },
-  {
-    id: 302,
-    title: 'Garlic Butter Shrimp',
-    coverImage:
-      'https://images.unsplash.com/photo-1563379091339-03246963d96c?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 15,
-    averageRating: 4.7,
-    ratingCount: 1800,
-    isLiked: false,
-  },
-  {
-    id: 303,
-    title: 'Classic Lasagna',
-    coverImage:
-      'https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'HARD',
-    cookingTimeMin: 90,
-    averageRating: 4.9,
-    ratingCount: 3200,
-    isLiked: false,
-  },
-  {
-    id: 304,
-    title: 'Truffle Risotto',
-    coverImage:
-      'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'MEDIUM',
-    cookingTimeMin: 45,
-    averageRating: 4.4,
-    ratingCount: 950,
-    isLiked: false,
-  },
-])
+const fetchRightNowPage = (page, pageSize) => getRecommendationRightNowApi(page, pageSize)
+const fetchBehaviorPage = (page, pageSize) => getRecommendationBehaviorApi(page, pageSize)
+const fetchTastePage = (page, pageSize) => getRecommendationTasteApi(page, pageSize)
 
-// 3. 符合口味偏好的快手菜
-const quickRecipes = ref([
-  {
-    id: 401,
-    title: 'Avocado Egg Toast',
-    coverImage:
-      'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 5,
-    averageRating: 4.9,
-    ratingCount: 5000,
-    isLiked: false,
-  },
-  {
-    id: 402,
-    title: 'Tomato Basil Bruschetta',
-    coverImage:
-      'https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 10,
-    averageRating: 4.6,
-    ratingCount: 1200,
-    isLiked: false,
-  },
-  {
-    id: 403,
-    title: '10-Min Chicken Tacos',
-    coverImage:
-      'https://images.unsplash.com/photo-1613514785940-daed07799d9b?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 10,
-    averageRating: 4.8,
-    ratingCount: 3400,
-    isLiked: false,
-  },
-  {
-    id: 404,
-    title: 'Fruit Smoothie Bowl',
-    coverImage:
-      'https://images.unsplash.com/photo-1494597564530-871f2b93ac55?auto=format&fit=crop&w=1200&q=80',
-    difficulty: 'EASY',
-    cookingTimeMin: 5,
-    averageRating: 4.7,
-    ratingCount: 2800,
-    isLiked: false,
-  },
-])
+const loadExplorePreview = async (tag) => {
+  if (!tag) {
+    activeExploreTag.value = null
+    explorePreviewRecipes.value = []
+    return
+  }
 
-const toSliceResult = (list, page, pageSize) => {
-  const start = page * pageSize
-  const end = start + pageSize
-  const content = list.slice(start, end)
-  const hasNext = end < list.length
-  return {
-    code: 1,
-    data: {
-      content,
-      hasNext,
-      last: !hasNext,
-    },
+  exploreLoading.value = true
+  activeExploreTag.value = tag
+
+  try {
+    const result = await getRecommendationExplorePreviewApi(tag)
+    explorePreviewRecipes.value = uniqueById(parsePagedResult(result).items)
+  } catch (error) {
+    console.error(error)
+    explorePreviewRecipes.value = []
+    ElMessage.error('Failed to load recipes for this taste.')
+  } finally {
+    exploreLoading.value = false
   }
 }
 
-const fetchSeasonalPage = async (page, pageSize) => {
-  return toSliceResult(seasonalRecipes.value, page, pageSize)
+const initializeExploreMode = async (availableCuisines, availableFlavours) => {
+  exploreTags.value = buildExploreTags({
+    availableCuisines,
+    availableFlavours,
+    limit: 6,
+  })
+  explorePreviewRecipes.value = []
+  activeExploreTag.value = null
+
+  for (const tag of exploreTags.value) {
+    try {
+      const result = await getRecommendationExplorePreviewApi(tag)
+      const items = uniqueById(parsePagedResult(result).items)
+      if (items.length) {
+        activeExploreTag.value = tag
+        explorePreviewRecipes.value = items
+        return
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  activeExploreTag.value = exploreTags.value[0] || null
 }
 
-const fetchSavedPage = async (page, pageSize) => {
-  return toSliceResult(basedOnSaves.value, page, pageSize)
+const loadSavedSeed = async () => {
+  try {
+    const result = await getRecommendationSavedSeedApi()
+    const parsed = parsePagedResult(result)
+    return parsed.items[0] || null
+  } catch (error) {
+    console.error(error)
+    return null
+  }
 }
 
-const fetchQuickPage = async (page, pageSize) => {
-  return toSliceResult(quickRecipes.value, page, pageSize)
+const loadPreferences = async () => {
+  try {
+    const result = await getRecommendationPreferencesApi()
+    if (result.code && result.data) {
+      return normalizePreferences(result.data)
+    }
+  } catch (error) {
+    console.error(error)
+  }
+
+  return emptyPreferences()
 }
+
+const loadAvailableTastes = async () => {
+  const [cuisineResult, flavourResult] = await Promise.allSettled([
+    getRecommendationExploreCuisinesApi(),
+    getRecommendationExploreFlavoursApi(),
+  ])
+
+  return {
+    cuisines:
+      cuisineResult.status === 'fulfilled' && cuisineResult.value.code ? cuisineResult.value.data : [],
+    flavours:
+      flavourResult.status === 'fulfilled' && flavourResult.value.code ? flavourResult.value.data : [],
+  }
+}
+
+const loadRecommendationPage = async () => {
+  loading.value = true
+
+  try {
+    const [loadedPreferences, loadedSavedRecipe, availableTastes] = await Promise.all([
+      loadPreferences(),
+      loadSavedSeed(),
+      loadAvailableTastes(),
+    ])
+
+    preferences.value = loadedPreferences
+    savedRecipe.value = loadedSavedRecipe
+    exploreTags.value = []
+    activeExploreTag.value = null
+    explorePreviewRecipes.value = []
+
+    sections.value = buildRecommendationSections({
+      preferences: loadedPreferences,
+      savedRecipe: loadedSavedRecipe,
+    })
+
+    if (sectionMap.value.taste?.mode === 'explore') {
+      await initializeExploreMode(availableTastes.cuisines, availableTastes.flavours)
+    }
+
+    sectionVersion.value += 1
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('Failed to load recommendations.')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadRecommendationPage()
+})
 </script>
 
 <template>
@@ -194,54 +227,142 @@ const fetchQuickPage = async (page, pageSize) => {
             <el-icon :size="28"><Avatar /></el-icon>
           </div>
           <div class="banner-text">
-            <h2>How our recommendation engine works?</h2>
-            <p>
-              We handpicked these recipes based on your <strong>saved items</strong>,
-              <strong>seasonal ingredients</strong>, and your dietary <strong>preferences</strong>.
-            </p>
+            <h2>How our recommendation engine works</h2>
+            <p>{{ engineSummary }}</p>
           </div>
         </div>
         <div class="banner-right">
-          <el-button color="#4ea685" class="pref-btn" round @click="openPreferences">
+          <el-button class="pref-btn btn-ui btn-ui--brand" @click="openPreferences">
             <el-icon><Setting /></el-icon>
-
             Edit Preferences
           </el-button>
         </div>
       </div>
 
-      <section class="recomm-section">
-        <RecipeSwitch
-          title="Seasonal Picks"
-          subtitle="Fresh ingredients perfect for this Spring"
-          title-icon="🌱"
-          :fetch-page="fetchSeasonalPage"
-          :pool-size="12"
-          :batch-size="4"
-        />
-      </section>
+      <div v-if="loading" class="page-loading">
+        <p>Loading recommendations...</p>
+      </div>
 
-      <section class="recomm-section">
-        <RecipeSwitch
-          title='Because you liked "Spaghetti"'
-          subtitle="Italian cuisine lovers also enjoyed these"
-          title-icon="☆"
-          :fetch-page="fetchSavedPage"
-          :pool-size="12"
-          :batch-size="4"
-        />
-      </section>
+      <template v-else>
+        <section class="recomm-section">
+          <RecipeSwitch
+            :key="`right-now-${sectionVersion}`"
+            :title="sectionMap['right-now']?.title || 'Good for this moment'"
+            :subtitle="sectionMap['right-now']?.subtitle || ''"
+            :fetch-page="fetchRightNowPage"
+            :pool-size="12"
+            :batch-size="4"
+            @like-toggled="handleLikeToggled"
+          />
+        </section>
 
-      <section class="recomm-section">
-        <RecipeSwitch
-          title="Quick & Easy"
-          subtitle="Since you prefer meals under 30 minutes"
-          title-icon="⏱"
-          :fetch-page="fetchQuickPage"
-          :pool-size="12"
-          :batch-size="4"
-        />
-      </section>
+        <section class="recomm-section">
+          <RecipeSwitch
+            v-if="sectionMap.behavior?.mode === 'personalized'"
+            :key="`behavior-${sectionVersion}`"
+            :title="sectionMap.behavior.title"
+            :subtitle="sectionMap.behavior.subtitle"
+            :fetch-page="fetchBehaviorPage"
+            :pool-size="12"
+            :batch-size="4"
+            empty-text="Save a few more recipes so we can find stronger matches for this section."
+            @like-toggled="handleLikeToggled"
+          />
+
+          <div v-else-if="sectionMap.behavior?.mode === 'cta'" class="cta-panel">
+            <div class="section-copy">
+              <h2 class="section-title">{{ sectionMap.behavior.title }}</h2>
+              <p class="section-subtitle">{{ sectionMap.behavior.subtitle }}</p>
+              <div class="cta-actions">
+                <el-button class="btn-ui btn-ui--brand" @click="openPreferences">
+                  Set Preferences
+                </el-button>
+                <el-button class="btn-ui btn-ui--outline" @click="openExplore">
+                  Save Recipes You Like
+                </el-button>
+              </div>
+            </div>
+
+            <div class="unlock-panel">
+              <p class="unlock-label">Unlocks</p>
+              <ul class="unlock-list">
+                <li>Because you saved...</li>
+                <li>Taste-based picks</li>
+                <li>Time-aware meals</li>
+              </ul>
+            </div>
+          </div>
+
+          <div v-else class="empty-panel">
+            <h2 class="section-title">{{ sectionMap.behavior?.title }}</h2>
+            <p class="section-subtitle">
+              Save a few more recipes so we can find stronger matches for this section.
+            </p>
+          </div>
+        </section>
+
+        <section class="recomm-section">
+          <RecipeSwitch
+            v-if="sectionMap.taste?.mode === 'personalized'"
+            :key="`taste-${sectionVersion}`"
+            :title="sectionMap.taste.title"
+            :subtitle="sectionMap.taste.subtitle"
+            :fetch-page="fetchTastePage"
+            :pool-size="12"
+            :batch-size="4"
+            empty-text="Update your taste preferences so we can turn this section into a stronger match."
+            @like-toggled="handleLikeToggled"
+          />
+
+          <div v-else-if="sectionMap.taste?.mode === 'explore'" class="explore-panel">
+            <div class="custom-section-header">
+              <div class="title-wrap">
+                <h2 class="section-title">{{ sectionMap.taste.title }}</h2>
+                <p class="section-subtitle">{{ sectionMap.taste.subtitle }}</p>
+              </div>
+            </div>
+
+            <div class="tag-list">
+              <button
+                v-for="tag in exploreTags"
+                :key="tag.key"
+                type="button"
+                class="taste-tag"
+                :class="{ active: activeExploreTag?.key === tag.key }"
+                @click="loadExplorePreview(tag)"
+              >
+                {{ tag.label }}
+              </button>
+            </div>
+
+            <div v-if="exploreLoading" class="empty-panel compact">
+              <p>Loading recipes for this taste...</p>
+            </div>
+
+            <RecipeCardGrid
+              v-else-if="explorePreviewRecipes.length"
+              :recipes="explorePreviewRecipes"
+              :xs="24"
+              :sm="12"
+              :md="8"
+              :lg="6"
+              :xl="6"
+              @like-toggled="handleLikeToggled"
+            />
+
+            <div v-else class="empty-panel compact">
+              <p>Try another taste tag to explore a different direction.</p>
+            </div>
+          </div>
+
+          <div v-else class="empty-panel">
+            <h2 class="section-title">{{ sectionMap.taste?.title }}</h2>
+            <p class="section-subtitle">
+              Update your taste preferences so we can turn this section into a stronger match.
+            </p>
+          </div>
+        </section>
+      </template>
     </div>
   </div>
 </template>
@@ -249,9 +370,9 @@ const fetchQuickPage = async (page, pageSize) => {
 <style scoped>
 .recomm-page {
   width: 100%;
-  background-color: #f9fafb; /* 保持全站统一的浅灰底色 */
-  min-height: calc(100vh - 64px); /* 减去顶部导航栏高度 */
+  min-height: calc(100vh - 64px);
   padding: 40px 0 80px 0;
+  background-color: #f9fafb;
 }
 
 .container {
@@ -260,17 +381,16 @@ const fetchQuickPage = async (page, pageSize) => {
   padding: 0 20px;
 }
 
-/* ================= 引擎解析横幅 ================= */
 .engine-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* 使用你最喜欢的极浅薄荷绿做背景 */
-  background-color: #eef7f4;
+  gap: 20px;
+  margin-bottom: 40px;
+  padding: 24px 32px;
   border: 1px solid #d5ebe1;
   border-radius: 16px;
-  padding: 24px 32px;
-  margin-bottom: 50px;
+  background-color: #eef7f4;
   box-shadow: 0 4px 12px rgba(78, 166, 133, 0.05);
 }
 
@@ -281,43 +401,56 @@ const fetchQuickPage = async (page, pageSize) => {
 }
 
 .icon-wrapper {
-  background-color: #4ea685;
-  color: white;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: #fff;
+  background-color: #4ea685;
   box-shadow: 0 4px 10px rgba(78, 166, 133, 0.3);
 }
 
-.banner-text h2 {
+.banner-text h2,
+.section-title {
   margin: 0 0 6px 0;
+  color: #2a5948;
   font-size: 1.4rem;
-  color: #2a5948; /* 深墨绿色，稳重 */
 }
 
-.banner-text p {
+.banner-text p,
+.section-subtitle {
   margin: 0;
-  color: #57b894;
+  color: #5e7d71;
   font-size: 1rem;
-}
-.banner-text strong {
-  color: #4ea685;
+  line-height: 1.6;
 }
 
 .pref-btn {
-  font-weight: bold;
-  padding: 12px 24px;
-  box-shadow: 0 4px 10px rgba(78, 166, 133, 0.2);
-  transition: transform 0.2s;
-}
-.pref-btn:hover {
-  transform: translateY(-2px);
+  padding-inline: 22px;
 }
 
-/* ================= 分类卡片区 ================= */
+.page-loading,
+.empty-panel,
+.cta-panel,
+.explore-panel {
+  border: 1px solid #e4ebeb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(25, 50, 45, 0.04);
+}
+
+.page-loading,
+.empty-panel {
+  padding: 32px 28px;
+}
+
+.page-loading {
+  text-align: center;
+  color: #5e7d71;
+}
+
 .recomm-section {
   margin-bottom: 50px;
 }
@@ -331,7 +464,101 @@ const fetchQuickPage = async (page, pageSize) => {
   margin-top: 2px;
 }
 
-/* 响应式调整横幅 */
+.cta-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  background: linear-gradient(135deg, #fffaf1, #fff4e6);
+  border-color: #edd8b8;
+}
+
+.section-copy {
+  flex: 1;
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.unlock-panel {
+  min-width: 220px;
+  padding: 16px;
+  border: 1px dashed #dbbe90;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.unlock-label {
+  margin: 0 0 12px 0;
+  color: #8a6a38;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.unlock-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #5c4720;
+  line-height: 1.8;
+}
+
+.explore-panel {
+  padding: 28px;
+}
+
+.custom-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.title-wrap {
+  min-width: 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.taste-tag {
+  padding: 10px 16px;
+  border: 1px solid #cedbe8;
+  border-radius: 999px;
+  background: #fff;
+  color: #48657c;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.taste-tag:hover {
+  transform: translateY(-1px);
+  border-color: #91b6d8;
+}
+
+.taste-tag.active {
+  border-color: #4ea685;
+  background: #4ea685;
+  color: #fff;
+}
+
+.compact {
+  padding: 20px;
+}
+
 @media (max-width: 768px) {
   .recomm-page {
     padding: 20px 0 40px 0;
@@ -341,19 +568,27 @@ const fetchQuickPage = async (page, pageSize) => {
     padding: 0 12px;
   }
 
-  .engine-banner {
+  .engine-banner,
+  .cta-panel {
     flex-direction: column;
     align-items: flex-start;
-    gap: 14px;
-    padding: 16px 14px;
+  }
+
+  .engine-banner {
+    padding: 18px 16px;
     margin-bottom: 28px;
   }
 
   .banner-left {
-    width: 100%;
-    gap: 10px;
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .banner-right,
+  .pref-btn,
+  .unlock-panel {
+    width: 100%;
   }
 
   .icon-wrapper {
@@ -361,37 +596,22 @@ const fetchQuickPage = async (page, pageSize) => {
     height: 44px;
   }
 
-  .banner-text {
-    width: 100%;
-  }
-
-  .banner-text h2 {
-    margin-bottom: 8px;
-    font-size: 1rem;
-    line-height: 1.45;
-  }
-
-  .banner-text p {
-    font-size: 0.9rem;
-    line-height: 1.6;
-  }
-
-  .banner-right {
-    width: 100%;
-  }
-
-  .pref-btn {
-    width: 100%;
-    min-height: 44px;
-    justify-content: center;
-  }
-
+  .banner-text h2,
+  .section-title,
   .recomm-section :deep(.section-title) {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
   }
 
+  .banner-text p,
+  .section-subtitle,
   .recomm-section :deep(.section-subtitle) {
-    font-size: 0.9rem;
+    font-size: 0.92rem;
+  }
+
+  .explore-panel,
+  .page-loading,
+  .empty-panel {
+    padding: 20px 16px;
   }
 
   .recomm-section {

@@ -73,26 +73,18 @@ public class RecipeServiceImpl implements RecipeService {
     @Transactional
     @Override
     public void addRecipe(RecipeDetailDto dto) {
-        // ==========================================
-        // 1. 基础属性与核心实体组装
-        // ==========================================
         Recipe recipe = new Recipe();
         BeanUtils.copyProperties(dto, recipe);
         long currentUserId=AuthUtils.getCurrentUserIdOrNull();
-
         User author = userRepository.getReferenceById(currentUserId);
         recipe.setAuthor(author);
-
-
         recipe.setRecipeFlavours(buildFlavours(dto.getFlavours(), recipe));
         recipe.setRecipeCourses(buildCourses(dto.getCourses(), recipe));
         recipe.setRecipeCuisines(buildCuisines(dto.getCuisines(), recipe));
         recipe.setRecipeIngredients(buildIngredients(dto.getIngredients(), recipe));
         recipe.setRecipeDietTypes(buildDietType(dto.getDietTypes(),recipe));
         recipe.setSteps(buildSteps(dto.getSteps(), recipe));
-
         Recipe savedRecipe = recipeRepository.save(recipe);
-
         syncToElasticsearch(savedRecipe);
     }
 
@@ -116,48 +108,6 @@ public class RecipeServiceImpl implements RecipeService {
         Recipe savedRecipe = recipeRepository.save(recipe);
         syncToElasticsearch(savedRecipe);
     }
-
-    @Override
-    public Slice<AdminRecipeCardDto> getAdminRecipeCards(Integer page, Integer pageSize, String keyword) {
-        Pageable pageable = PageRequest.of(page, pageSize);
-        Slice<Recipe> recipeSlice;
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            recipeSlice = recipeRepository.findByTitleContainingIgnoreCaseOrderByCreatedAtDesc(keyword.trim(), pageable);
-        } else {
-            recipeSlice = recipeRepository.findAllByOrderByCreatedAtDesc(pageable);
-        }
-
-        return recipeSlice.map(this::toAdminRecipeCardDto);
-    }
-
-    @Transactional
-    @Override
-    public void adminUpdateRecipe(Long id, RecipeDetailDto dto) {
-        Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
-        applyRecipeUpdate(recipe, dto);
-
-        Recipe savedRecipe = recipeRepository.save(recipe);
-        syncToElasticsearch(savedRecipe);
-    }
-
-    @Transactional
-    @Override
-    public void adminDeleteRecipe(Long id) {
-        Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
-
-        // Clean dependent records first to avoid FK violations.
-        userSavedRepository.deleteByRecipeId(id);
-        ratingRepository.deleteByRecipeId(id);
-
-        recipeRepository.delete(recipe);
-        deleteFromElasticsearch(id);
-    }
-
-    // ==========================================
-    // ⬇️ 脏活累活全部藏在私有方法里 (代码复用，极度整洁) ⬇️
-    // ==========================================
 
     private List<Recipe_Flavour> buildFlavours(List<String> names, Recipe recipe) {
         if (names == null) return new ArrayList<>();
@@ -256,23 +206,6 @@ public class RecipeServiceImpl implements RecipeService {
         syncCollection(recipe.getSteps(), buildSteps(dto.getSteps(), recipe), recipe::setSteps);
     }
 
-    private AdminRecipeCardDto toAdminRecipeCardDto(Recipe recipe) {
-        AdminRecipeCardDto dto = new AdminRecipeCardDto();
-        dto.setId(recipe.getId());
-        dto.setTitle(recipe.getTitle());
-        dto.setCoverImage(recipe.getCoverImage());
-        dto.setDifficulty(recipe.getDifficulty());
-        dto.setCookingTimeMin(recipe.getCookingTimeMin());
-        dto.setAverageRating(recipe.getAverageRating());
-        dto.setRatingCount(recipe.getRatingCount());
-        dto.setCreatedAt(recipe.getCreatedAt());
-        dto.setUpdatedAt(recipe.getUpdatedAt());
-        if (recipe.getAuthor() != null) {
-            dto.setAuthorId(recipe.getAuthor().getId());
-            dto.setAuthorName(recipe.getAuthor().getUsername());
-        }
-        return dto;
-    }
 
 
     public void syncToElasticsearch(Recipe recipe) {
@@ -290,6 +223,7 @@ public class RecipeServiceImpl implements RecipeService {
     private void deleteFromElasticsearch(Long recipeId) {
         try {
             recipeEsRepository.deleteById(recipeId);
+
         } catch (Exception e) {
 
         }

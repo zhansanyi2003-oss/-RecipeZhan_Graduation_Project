@@ -232,10 +232,8 @@ watch(
     <div v-if="items.length > 0" class="slice-footer">
       <el-button
         v-if="hasNext"
-        type="primary"
         size="large"
-        round
-        class="slice-load-more-btn"
+        class="slice-load-more-btn btn-ui btn-ui--brand btn-ui--large"
         @click="loadMore"
       >
         {{ loadMoreText }}
@@ -257,19 +255,6 @@ watch(
 
 .slice-load-more-btn {
   width: 220px;
-  font-weight: 700;
-  border: none !important;
-  color: #fff !important;
-  background-color: #4ea685 !important;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.slice-load-more-btn:hover {
-  background-color: #57b894 !important;
-  transform: scale(1.05);
 }
 
 .slice-no-more {

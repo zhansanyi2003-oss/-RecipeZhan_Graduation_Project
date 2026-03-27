@@ -3,8 +3,10 @@ package org.zhan.recipe_backend.repository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.UserSavedRecipes;
 
@@ -28,6 +30,17 @@ public interface UserSavedRepository extends JpaRepository<UserSavedRecipes, Lon
 
     @Query("select s.recipe.id from UserSavedRecipes  s where s.user.id=:userId ")
     Set<Long> findRecipeIdsByUserId(@Param("userId")Long currenUserId);
+
+    @Modifying
+    @Query(value = """
+        insert into user_saved_recipes (user_id, recipe_id)
+        values (:userId, :recipeId)
+        on conflict (user_id, recipe_id) do nothing
+        """,
+            nativeQuery = true
+    )
+    void saveRecipe(@Param("userId") Long userId, @Param("recipeId") Long recipeId);
+
 
 
 }

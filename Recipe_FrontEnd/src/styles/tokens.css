@@ -1,0 +1,42 @@
+:root {
+  --color-primary-active: #2f755d;
+  --color-primary-hover: #459a7a;
+  --color-primary: #4ea685;
+  --color-primary-accent: #57b894;
+  --color-primary-border: #d5ebe1;
+  --color-primary-muted: #e4f2ec;
+  --color-primary-soft: #eef7f4;
+  --color-primary-ghost: #f7fbf9;
+
+  --color-danger-hover: #a62d2d;
+  --color-danger: #b63c3c;
+  --color-danger-border: #efb0b0;
+  --color-danger-soft: #fff1f1;
+
+  --color-surface-page: #f9fafb;
+  --color-surface-card: #ffffff;
+  --color-surface-muted: #f4f7f8;
+
+  --color-text-strong: #1f2f46;
+  --color-text-body: #2c3e50;
+  --color-text-muted: #606266;
+  --color-text-soft: #909399;
+  --color-text-on-primary: #ffffff;
+
+  --color-border-soft: #e8ecef;
+  --color-border-primary: #d5ebe1;
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 4px 12px rgba(29, 60, 50, 0.08);
+  --shadow-brand: 0 8px 18px rgba(78, 166, 133, 0.24);
+  --shadow-brand-hover: 0 10px 22px rgba(78, 166, 133, 0.3);
+  --shadow-danger: 0 6px 12px rgba(214, 93, 93, 0.16);
+
+  --transition-fast: 180ms ease;
+  --transition-base: 220ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}

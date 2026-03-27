@@ -25,6 +25,7 @@ public class RecipeDetailDto {
     private Integer ratingCount;
     private Double userScore;
     private Boolean isLiked;
+    private Long version;
     private List<IngredientDto> ingredients;
     private List<RecipeStepDto> steps;
 }
