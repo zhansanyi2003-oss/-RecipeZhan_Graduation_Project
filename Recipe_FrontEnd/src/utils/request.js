@@ -2,6 +2,8 @@ import axios from 'axios'
 
 import router from '../router'
 
+import { ElMessage } from 'element-plus'
+
 const request = axios.create({
   baseURL: '/api',
 
@@ -13,8 +15,19 @@ request.interceptors.response.use(
   },
   (error) => {
     const status = error?.response?.status
-    if (status === 403) {
+    const backendMessage = error?.response?.data?.message || error?.response?.data?.msg
+
+    if (status === 401) {
+      localStorage.removeItem('loginUser')
+      localStorage.removeItem('token_exp')
+
+      ElMessage.warning(backendMessage || 'Your session expired. Please sign in again.')
+
       router.push('/login')
+    }
+
+    if (status === 403) {
+      ElMessage.error(backendMessage || 'You do not have permission to access this page.')
     }
 
     return Promise.reject(error)

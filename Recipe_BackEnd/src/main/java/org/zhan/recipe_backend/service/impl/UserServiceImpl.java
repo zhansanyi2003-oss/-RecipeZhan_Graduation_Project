@@ -23,6 +23,7 @@ import org.zhan.recipe_backend.repository.RecipeRepository;
 import org.zhan.recipe_backend.repository.UserRepository;
 import org.zhan.recipe_backend.repository.UserSavedRepository;
 import org.zhan.recipe_backend.security.RecipeUserDetails;
+import org.zhan.recipe_backend.service.AuthSessionRedisService;
 import org.zhan.recipe_backend.service.UserService;
 import org.zhan.recipe_backend.utils.AuthUtils;
 import org.zhan.recipe_backend.utils.ConvertUtils;
@@ -34,7 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+ 
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -62,6 +63,8 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private AuthSessionRedisService authSessionRedisService;
 
     public Boolean registerUser(UserSingUpDto user ) {
 
@@ -87,8 +90,7 @@ public class UserServiceImpl implements UserService {
         );
         RecipeUserDetails userDetails = (RecipeUserDetails) auth.getPrincipal();
         User user = userDetails.getUser();
-        // 3. 🌟 把 ID 塞进去生成 Token
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), String.valueOf(user.getRole()));
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), String.valueOf(user.getRole()),authSessionRedisService.createSession(user.getId()));
 
         return "Bearer " + token;
 
@@ -132,6 +134,12 @@ public class UserServiceImpl implements UserService {
 
         user.setPreferences(preferences);
         userRepository.save(user);
+    }
+
+    @Override
+    public void deleteSession() {
+        Long userId = AuthUtils.getCurrentUserIdOrNull();
+        authSessionRedisService.deleteSession(userId);
     }
 
     public UserPreferenceDto getUserPreferences() {

@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.zhan.recipe_backend.service.AuthSessionRedisService;
 import org.zhan.recipe_backend.utils.JwtUtils;
 
 import java.io.IOException;
@@ -23,6 +24,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private AuthSessionRedisService authSessionRedisService;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -33,22 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             if (jwtUtils.validateToken(token)) {
-                // 1. 解析 Token
+
                 Claims claims = jwtUtils.parseToken(token);
 
-                // 2. 拿到我们在发证时塞进去的 ID 和 角色
-                // 注意：这里我们完全没有查数据库！
                 Long userId = claims.get("userId", Long.class);
                 String role = claims.get("role", String.class);
-
-                // 3. 把 userId 作为 principal 存入 Security 上下文
+                String sessionId = claims.get("sessionId", String.class);
+                if( !authSessionRedisService.isActiveSession(userId,sessionId )){
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Session expired or replaced by a newer login\"}");
+                    return;
+                }
                 SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userId, null, Collections.singletonList(authority));
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // 4. 正式挂上大楼的身份牌
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
