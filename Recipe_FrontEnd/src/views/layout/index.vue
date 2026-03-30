@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { logOutApi } from '../../api/login'
 import { getUserInfoApi } from '../../api/user'
 
 const router = useRouter()
@@ -40,15 +41,20 @@ const handleLogout = () => {
     confirmButtonText: 'Quit',
     cancelButtonText: 'Cancel',
     type: 'warning',
+  }).then(async () => {
+    try {
+      await logOutApi()
+    } catch {
+      ElMessage.error('Log Out Failed')
+    }
+
+    localStorage.removeItem('loginUser')
+    localStorage.removeItem('token_exp')
+    userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
+    mobileNavOpen.value = false
+    ElMessage.success('Logged out successfully')
+    router.push('/')
   })
-    .then(() => {
-      localStorage.removeItem('loginUser')
-      userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
-      mobileNavOpen.value = false
-      ElMessage.success('Logged out successfully')
-      router.push('/')
-    })
-    .catch(() => {})
 }
 
 const goToLogin = () => {
@@ -62,7 +68,7 @@ const navigate = (path) => {
 }
 
 const userInitial = computed(() => {
-  return userInfo.value.name?.charAt(0)?.toUpperCase() || 'U'
+  return userInfo.value.name?.charAt(0)?.toUpperCase()
 })
 
 const isAdmin = computed(() => userInfo.value.role === 'ADMIN')

@@ -30,27 +30,27 @@ public class AuthController {
         return Result.Success();
     }
 
-    // ==========================================
-    // 🌟 2. 登录接口
-    // ==========================================
+
     @PostMapping("/login")
     public Result login(@RequestBody UserLoginDto dto) {
 
 
         try {
-            // 1. 调用 Service 进行登录，并接收辛苦生成的 Token！
-            // 🚨 修复Bug：必须把 userService 返回的 token 存起来
             String token = userService.loginUser(dto);
 
-            // 2. 账号密码完全正确！把 Token 包装在 Result 的 data 里发给前端
             return Result.Success(token);
 
         } catch (AuthenticationException e) {
-            // 3. 🌟 核心拦截：如果密码错误或账号不存在，Spring Security 抛出的异常会掉进这里！
-            // 我们稳稳接住，然后用我们自己漂亮的 Result 格式返回给前端！
             return Result.Error("账号或密码错误，请重新输入！");
         }
     }
+
+    @PostMapping ("/logout")
+    public Result logout() {
+        userService.deleteSession();
+        return Result.Success();
+    }
+
 
 
 }

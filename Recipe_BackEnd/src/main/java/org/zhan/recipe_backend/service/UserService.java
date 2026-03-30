@@ -27,4 +27,6 @@ public interface UserService {
      void deleteAvatar();
      UserPreferenceDto getUserPreferences();
      void updateUserPreferences(UserPreferenceDto preferences);
+
+     void deleteSession();
 }

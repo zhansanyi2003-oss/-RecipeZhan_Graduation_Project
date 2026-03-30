@@ -27,7 +27,6 @@ public class UploadFileServiceImpl  implements UploadFileService {
         String originalFilename = file.getOriginalFilename();
         String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         String newFileName = md5 + extension;
-
         File dest = new File(uploadDir + newFileName);
         if (!dest.exists()) {
             file.transferTo(dest);

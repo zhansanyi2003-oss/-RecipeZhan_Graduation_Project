@@ -124,8 +124,6 @@ public class RecipeCardServiceImpl implements RecipeCardService {
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(q)
                 .withPageable(pageable)
-                // Optional: Add sorting by ID descending (newest first) if no keyword search is provided
-                // .withSort(Sort.by(Sort.Direction.DESC, "id"))
                 .build();
 
         SearchHits<RecipeDoc> searchHits = elasticsearchOperations.search(nativeQuery, RecipeDoc.class);
@@ -325,6 +323,7 @@ public class RecipeCardServiceImpl implements RecipeCardService {
         List<FunctionScore> scoreFunctions = new ArrayList<>();
         if (savedSeed.getCuisines() != null) {
             for (String cuisine : savedSeed.getCuisines()) {
+
                 scoreFunctions.add(FunctionScore.of(fs -> fs
                         .filter(f -> f.term(t -> t.field("cuisines").value(cuisine)))
                         .weight(2.2)

@@ -291,7 +291,10 @@ watch(
             <template #item="{ recipe, onLikeToggled }">
               <div class="my-recipe-item">
                 <RecipeCard :data="recipe" @like-toggled="onLikeToggled" />
-                <el-button class="edit-recipe-btn btn-ui btn-ui--outline" @click="goToEditRecipe(recipe.id)">
+                <el-button
+                  class="edit-recipe-btn btn-ui btn-ui--outline"
+                  @click="goToEditRecipe(recipe.id)"
+                >
                   Edit Recipe
                 </el-button>
               </div>
@@ -397,7 +400,7 @@ watch(
                   <el-radio-button value="999">🍲 No Limit</el-radio-button>
                 </el-radio-group>
               </el-form-item>
-              <el-form-item label="Favorite Flavours (口味偏好)">
+              <el-form-item label="Favorite Flavours">
                 <el-select
                   v-model="preferences.flavours"
                   multiple
@@ -415,7 +418,7 @@ watch(
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="Favorite Cuisines (喜爱菜系)">
+              <el-form-item label="Favorite Cuisines">
                 <el-select
                   v-model="preferences.cuisines"
                   multiple
@@ -684,10 +687,10 @@ watch(
   padding: 40px 0;
 }
 
-/* ================= 🌟 爆改的 Tab 3: Preferences ================= */
+/* ================= Tab 3: Preferences ================= */
 .preferences-panel {
   max-width: 700px;
-  margin: 20px auto; /* 居中显示，像问卷一样优雅 */
+  margin: 20px auto;
   background: #fafdfb;
   padding: 40px;
   border-radius: 16px;
@@ -733,14 +736,6 @@ watch(
   margin: 0;
 }
 
-/* ================= 🌟 高级定制：美化多选下拉框的 Tags ================= */
-
-/* 让下拉框本身看起来更高级、更像一个搜索栏 */
-
-/* 统一个性化按钮风格 */
-/* ================= 统一个性化按钮风格 (薄荷绿) ================= */
-
-/* 1. 默认状态下的样式（变成圆角药丸状，去掉难看的连体边框） */
 :deep(.el-radio-button__inner),
 :deep(.el-checkbox-button__inner) {
   border-radius: 8px !important;
@@ -753,7 +748,6 @@ watch(
   transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
-/* 2. 🌟 激活/选中状态下的样式（变成主题薄荷绿！） */
 :deep(.el-radio-button.is-active .el-radio-button__inner),
 :deep(.el-checkbox-button.is-checked .el-checkbox-button__inner) {
   background-color: #eef7f4 !important; /* 浅绿背景 */
@@ -794,13 +788,11 @@ watch(
   gap: 20px; /* 🌟 让两个按钮之间有一段舒适的距离 */
 }
 
-/* 🌟 Reset 按钮的高级感样式 */
 .reset-pref-btn {
   padding: 0 30px;
   font-size: 16px;
 }
 
-/* 原有的 Save 按钮样式保持不变，但如果你之前没加悬浮动画，可以确保有下面这句 */
 .save-pref-btn {
   padding: 0 34px;
   font-size: 18px;

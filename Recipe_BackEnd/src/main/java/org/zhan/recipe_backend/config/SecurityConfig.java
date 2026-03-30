@@ -54,13 +54,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 解决跨域坑：开启 CORS，使用我们下面定义的 corsConfigurationSource
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 关闭 CSRF，前后端分离不需要这个
                 .csrf(csrf -> csrf.disable())
 
-                // 告诉 Security 不要使用 Session (STATELESS)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // 配置哪些接口需要拦截，哪些放行
@@ -68,6 +65,7 @@ public class SecurityConfig {
                         // 允许所有人访问的接口 (游客区)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
+
                         .requestMatchers(HttpMethod.POST,"/api/login", "/api/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/recipes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/recipes/**").permitAll()
