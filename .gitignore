@@ -15,6 +15,7 @@ uploads/
 Dokumentum/
 .worktrees/
 .superpowers/
+docs/superpowers/
 
 # --- 前端 (Vue / Node) ---
 Recipe_FrontEnd/node_modules/
