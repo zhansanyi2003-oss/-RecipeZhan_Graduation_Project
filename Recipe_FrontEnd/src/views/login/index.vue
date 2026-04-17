@@ -3,13 +3,14 @@ import { ref, onMounted } from 'vue'
 import { loginApi, registerApi } from '../../api/login.js'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-// 1. 控制面板切换的状态 (true 为登录状态，false 为注册状态)
+import { getTokenExpiryTimestamp } from '../../utils/auth'
+import { useSessionStore } from '../../stores/session'
 
 const isSignIn = ref(false)
 const router = useRouter()
 const route = useRoute()
+const sessionStore = useSessionStore()
 
-// 2. 表单绑定的数据
 const loginForm = ref({
   username: '',
   password: '',
@@ -24,40 +25,35 @@ const registerForm = ref({
 
 const formErrors = ref({})
 
-// 🌟 规则字典保持完全不变！
 const rules = {
   register: {
-    username: [{ required: true, message: '用户名不能为空' }],
+    username: [{ required: true, message: 'Username is required' }],
     email: [
-      { required: true, message: '邮箱不能为空' },
-      { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式' },
+      { required: true, message: 'Email is required' },
+      { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email' },
     ],
     password: [
-      { required: true, message: '密码不能为空' },
-      { minLength: 6, message: '密码至少需要 6 位' },
+      { required: true, message: 'Password is required' },
+      { minLength: 6, message: 'Password must be at least 6 characters' },
     ],
     confirmPassword: [
-      { required: true, message: '请再次确认密码' },
-      { custom: (val) => val === registerForm.value.password, message: '两次输入的密码不一致' },
+      { required: true, message: 'Please confirm your password' },
+      { custom: (val) => val === registerForm.value.password, message: 'Passwords do not match' },
     ],
   },
   login: {
-    username: [{ required: true, message: '请输入用户名' }],
-    password: [{ required: true, message: '请输入密码' }],
+    username: [{ required: true, message: 'Please enter your username' }],
+    password: [{ required: true, message: 'Please enter your password' }],
   },
 }
 
-// 🌟 核心升级 1：单字段校验引擎 (专门给 @blur 用的)
 const validateField = (formType, field) => {
   const currentRules = rules[formType][field]
-  // 动态判断是去拿注册表单的值，还是登录表单的值
   const formData = formType === 'register' ? registerForm.value : loginForm.value
   const value = formData[field]
 
-  // 先清空这个字段之前的错误
   delete formErrors.value[field]
 
-  // 跑一遍当前字段的所有规则
   for (const rule of currentRules) {
     if (rule.required && !value) {
       formErrors.value[field] = rule.message
@@ -76,28 +72,27 @@ const validateField = (formType, field) => {
       return false
     }
   }
-  return true // 这个字段完美通过！
+
+  return true
 }
 
-// 🌟 核心升级 2：全表单校验 (点击按钮时，循环调用上面的单字段校验)
 const validateForm = (formType) => {
   let isValid = true
   const currentRules = rules[formType]
 
-  // 把表单里的每一个框都强制检查一遍
   for (const field in currentRules) {
     if (!validateField(formType, field)) {
       isValid = false
     }
   }
+
   return isValid
 }
 
-// 🌟 极致用户体验：当用户开始重新打字时，立刻把红字提示消掉
 const clearError = (field) => {
   delete formErrors.value[field]
 }
-// 3. 切换状态的方法
+
 const togglePanel = () => {
   isSignIn.value = !isSignIn.value
 }
@@ -107,76 +102,76 @@ const handleRegister = async () => {
     ElMessage.error('The form can not be Empty')
     return
   }
+
   const payload = {
     username: registerForm.value.username,
     email: registerForm.value.email,
     password: registerForm.value.password,
   }
 
-  const result = await registerApi(payload)
-  if (result.code) {
-    ElMessage.success('You successfully signed up')
-    loginForm.value.username = registerForm.value.username
-    isSignIn.value = true
-    formErrors.value = {}
-    registerForm.value.username = ''
-    registerForm.value.email = ''
-    registerForm.value.password = ''
-    registerForm.value.confirmPassword = '' // 清空红字
-  } else {
-    formErrors.value.username = result.data.msg || '注册失败，请检查'
+  try {
+    const result = await registerApi(payload)
+    if (result.code) {
+      ElMessage.success('You successfully signed up')
+      loginForm.value.username = registerForm.value.username
+      isSignIn.value = true
+      formErrors.value = {}
+      registerForm.value.username = ''
+      registerForm.value.email = ''
+      registerForm.value.password = ''
+      registerForm.value.confirmPassword = ''
+    } else {
+      formErrors.value.username = result.data?.msg || 'Register failed'
+    }
+  } catch (error) {
+    console.error('Register failed:', error)
+    ElMessage.error('Register failed. Please check your network or try again.')
   }
 }
 
 const handleLogin = async () => {
-  // 1. 校验表单
   if (!validateForm('login')) {
     ElMessage.error('The form can not be Empty or Invalid')
     return
   }
 
   try {
-    // 2. 发起登录请求
     const result = await loginApi(loginForm.value)
 
-    // 假设后端成功返回的 code 是 1
     if (result.code) {
       ElMessage.success('You successfully logged in')
 
-      // 3. 🌟 存储 Token (注意：格式必须和你 axios 拦截器里写的一致！)
-      // 你的拦截器里写的是：JSON.parse(localStorage.getItem('loginUser'))
-      const token = result.data // 假设后端把 token 放在了 result.data 里
+      const token = result.data
       const loginUserObj = {
         Authorization: token,
         username: loginForm.value.username,
       }
-      localStorage.setItem('loginUser', JSON.stringify(loginUserObj))
-      localStorage.setItem('token_exp', Date.now() + 24 * 60 * 60 * 1000)
+      const tokenExp = getTokenExpiryTimestamp(loginUserObj.Authorization)
+      if (!tokenExp) {
+        throw new Error('Missing token expiration.')
+      }
 
-      // 4. 🌟 返回上一页的高级写法：
-      // 如果是被拦截器踢到登录页的，URL上通常会有 ?redirect=/xxx，我们就跳回 /xxx
-      // 如果没有 redirect 参数，就默认跳回首页 '/'
+      localStorage.setItem('loginUser', JSON.stringify(loginUserObj))
+      localStorage.setItem('token_exp', String(tokenExp))
+      sessionStore.clearProfile()
+
       const redirectPath = route.query.redirect || '/'
       router.push(redirectPath)
     } else {
-      // 登录失败：把后端返回的错误信息挂在密码框下方
-      formErrors.value.password = result.msg || '账号或密码错误'
-      ElMessage.error(result.msg || '登录失败')
+      formErrors.value.password = result.msg || 'Wrong username or password'
+      ElMessage.error(result.msg || 'Login failed')
     }
   } catch (error) {
-    console.error('登录异常:', error)
-    formErrors.value.password = '账号或密码错误，请检查网络或后端状态'
+    console.error('Login failed:', error)
+    formErrors.value.password = 'Wrong username or password. Please check your network or backend.'
   }
 }
 
-// 4. 组件挂载后，延迟触发初始动画
 onMounted(() => {
   setTimeout(() => {
     isSignIn.value = true
   }, 200)
 })
-
-// 5. 模拟提交方法 (你可以在这里接后端的 Axios 请求)
 </script>
 
 <template>
@@ -611,3 +606,4 @@ onMounted(() => {
   }
 }
 </style>
+

@@ -16,20 +16,24 @@ import {
 } from '../../api/user'
 
 import { getAllCuisinesApi, getAllFlavoursApi, getAllIngredientsApi } from '../../api/recipeCard'
+import { useSessionStore } from '../../stores/session'
 
 const activeTab = ref('myRecipes')
 const route = useRoute()
+const router = useRouter()
+const sessionStore = useSessionStore()
+const avatarUploadAction = '/api/users/avatar'
 
-const userInfo = ref({
+const emptyUserInfo = {
   username: '',
   avatarUrl: '',
   bio: '',
   email: '',
   createdCount: null,
   savedCount: null,
-})
+}
 
-const router = useRouter()
+const userInfo = computed(() => sessionStore.profile || emptyUserInfo)
 const myRecipeSliceRef = ref()
 const savedRecipeSliceRef = ref()
 const myRecipeCount = ref(0)
@@ -39,8 +43,6 @@ const userInitial = computed(() => {
   return userInfo.value.username ? userInfo.value.username.charAt(0).toUpperCase() : ''
 })
 
-// ================= 🌟 新增/大改：全维度口味设置 (Food DNA) =================
-// 这些字段将作为参数发送给你的后端 Elasticsearch 推荐引擎
 const preferences = ref({
   dietary: [],
   allergies: [],
@@ -52,34 +54,35 @@ const preferences = ref({
 const cuisines = ref([])
 const flavours = ref([])
 const ingredients = ref([])
+
 const getFlavours = async () => {
   const result = await getAllFlavoursApi()
   if (result.code) {
     flavours.value = result.data
   }
 }
+
 const getCuisines = async () => {
   const result = await getAllCuisinesApi()
   if (result.code) {
     cuisines.value = result.data
   }
 }
+
 const getIngredients = async () => {
   const result = await getAllIngredientsApi()
   if (result.code) {
     ingredients.value = result.data
   }
 }
-// 供用户选择的选项常量
+
 const dietaryOptions = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Halal']
 
-// 模拟保存接口
 const handleSavePreferences = async () => {
   try {
     const res = await updatePreferenceApi(preferences.value)
     if (res.code) {
-      // 假设 1 是成功状态码
-      ElMessage.success('Taste preferences saved! Your recommendations have been updated 🪄')
+      ElMessage.success('Taste preferences saved! Your recommendations have been updated.')
     }
   } catch (error) {
     ElMessage.error(error.message)
@@ -87,17 +90,17 @@ const handleSavePreferences = async () => {
 }
 
 const handleResetPreferences = () => {
-  // 直接把 preferences 的值覆盖回最干净的初始状态
   preferences.value = {
     dietary: [],
     allergies: [],
-    skillLevel: '', // 恢复默认值
-    timeAvailability: '', // 恢复默认值
+    skillLevel: '',
+    timeAvailability: '',
     flavours: [],
     cuisines: [],
     ingredients: [],
   }
 }
+
 const fetchUserPreferences = async () => {
   try {
     const res = await getPreferenceApi()
@@ -110,8 +113,13 @@ const fetchUserPreferences = async () => {
 }
 
 const handleAvatarSuccess = (response) => {
-  userInfo.value.avatarUrl = response.data
+  sessionStore.patchProfile({ avatarUrl: response.data })
   ElMessage.success('Avatar uploaded successfully!')
+}
+
+const handleAvatarError = (error) => {
+  console.error('Avatar upload failed:', error)
+  ElMessage.error('Avatar upload failed. Please check whether the backend API is reachable.')
 }
 
 const beforeAvatarUpload = (rawFile) => {
@@ -130,18 +138,23 @@ const beforeAvatarUpload = (rawFile) => {
 }
 
 const getUserInfo = async () => {
-  const result = await getUserInfoApi()
-  if (result.code) {
-    userInfo.value = result.data
+  const profile = await sessionStore.loadProfile(getUserInfoApi)
+  if (profile) {
+    sessionStore.setProfile(profile)
   }
 }
+
 const fetchMyRecipesPage = async (page, pageSize) => {
   return await getMyRecipeApi(page, pageSize)
 }
 
 const removeAvatar = async () => {
-  userInfo.value.avatarUrl = ''
   await deleteAvatarApi()
+  sessionStore.patchProfile({ avatarUrl: '' })
+}
+
+const handleAvatarLoadError = () => {
+  sessionStore.patchProfile({ avatarUrl: '' })
 }
 
 const uploadHeaders = computed(() => {
@@ -214,10 +227,11 @@ watch(
         <div class="avatar-wrapper">
           <el-upload
             class="avatar-uploader"
-            action="http://localhost:8888/api/users/avatar"
+            :action="avatarUploadAction"
             :headers="uploadHeaders"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
+            :on-error="handleAvatarError"
             :before-upload="beforeAvatarUpload"
             title="Click to upload a new avatar"
           >
@@ -225,7 +239,7 @@ watch(
               :size="100"
               :src="userInfo.avatarUrl || undefined"
               class="avatar initial-avatar"
-              @error="() => (userInfo.avatarUrl = '')"
+              @error="handleAvatarLoadError"
             >
               {{ userInitial }}
             </el-avatar>
@@ -928,3 +942,4 @@ watch(
   }
 }
 </style>
+
