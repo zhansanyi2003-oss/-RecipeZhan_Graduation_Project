@@ -4,36 +4,21 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logOutApi } from '../../api/login'
 import { getUserInfoApi } from '../../api/user'
+import { clearStoredLogin, getStoredLoginSnapshot } from '../../utils/auth'
+import { resolvePrimaryMenuIndex } from '../../utils/navigationMenuState'
+import { useSessionStore } from '../../stores/session'
 
 const router = useRouter()
 const route = useRoute()
 const mobileNavOpen = ref(false)
-
-const userInfo = ref({ name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false })
+const sessionStore = useSessionStore()
+const loginSnapshot = ref(getStoredLoginSnapshot())
 
 const checkLoginStatus = () => {
-  const loginUserStr = localStorage.getItem('loginUser')
-  if (!loginUserStr) {
-    userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
-    return
+  loginSnapshot.value = getStoredLoginSnapshot()
+  if (!loginSnapshot.value.isLoggedIn) {
+    sessionStore.clearProfile()
   }
-
-  try {
-    const loginUser = JSON.parse(loginUserStr)
-    if (loginUser?.username) {
-      userInfo.value = {
-        name: loginUser.username,
-        avatarUrl: '',
-        role: typeof loginUser.role === 'string' ? loginUser.role.toUpperCase() : null,
-        isLoggedIn: true,
-      }
-      return
-    }
-  } catch (error) {
-    console.error('login data error', error)
-  }
-
-  userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
 }
 
 const handleLogout = () => {
@@ -44,16 +29,15 @@ const handleLogout = () => {
   }).then(async () => {
     try {
       await logOutApi()
+      clearStoredLogin()
+      sessionStore.clearProfile()
+      checkLoginStatus()
+      mobileNavOpen.value = false
+      ElMessage.success('Logged out successfully')
+      router.push('/')
     } catch {
       ElMessage.error('Log Out Failed')
     }
-
-    localStorage.removeItem('loginUser')
-    localStorage.removeItem('token_exp')
-    userInfo.value = { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
-    mobileNavOpen.value = false
-    ElMessage.success('Logged out successfully')
-    router.push('/')
   })
 }
 
@@ -67,34 +51,43 @@ const navigate = (path) => {
   router.push(path)
 }
 
+const userInfo = computed(() => {
+  if (!loginSnapshot.value.isLoggedIn) {
+    return { name: 'Visitor', avatarUrl: '', role: null, isLoggedIn: false }
+  }
+
+  return {
+    name: sessionStore.profile?.username || loginSnapshot.value.username || 'Visitor',
+    avatarUrl: sessionStore.profile?.avatarUrl || '',
+    role: sessionStore.profile?.role || loginSnapshot.value.role,
+    isLoggedIn: true,
+  }
+})
+
 const userInitial = computed(() => {
   return userInfo.value.name?.charAt(0)?.toUpperCase()
 })
 
 const isAdmin = computed(() => userInfo.value.role === 'ADMIN')
+const activeMenuIndex = computed(() => resolvePrimaryMenuIndex(route.path))
 
 const loadUserProfile = async () => {
-  if (!userInfo.value.isLoggedIn) return
+  if (!loginSnapshot.value.isLoggedIn) return
   try {
-    const res = await getUserInfoApi()
-    if (res.code && res.data) {
-      userInfo.value.name = res.data.username || userInfo.value.name
-      userInfo.value.avatarUrl = res.data.avatarUrl || ''
-      userInfo.value.role =
-        typeof res.data.role === 'string'
-          ? res.data.role.toUpperCase()
-          : userInfo.value.role || null
-    }
-  } catch (e) {
-    userInfo.value.avatarUrl = ''
+    await sessionStore.loadProfile(getUserInfoApi, { force: true })
+  } catch (error) {
+    console.error(error)
   }
+}
+
+const handleHeaderAvatarError = () => {
+  sessionStore.patchProfile({ avatarUrl: '' })
 }
 
 watch(
   () => route.path,
-  async () => {
+  () => {
     checkLoginStatus()
-    await loadUserProfile()
     mobileNavOpen.value = false
   },
 )
@@ -115,8 +108,14 @@ onMounted(async () => {
           </div>
 
           <div class="center-section">
-            <el-menu mode="horizontal" :ellipsis="false" router class="modern-menu">
-              <el-menu-item index="/">Home</el-menu-item>
+            <el-menu
+              mode="horizontal"
+              :ellipsis="false"
+              router
+              :default-active="activeMenuIndex"
+              class="modern-menu"
+            >
+              <el-menu-item index="/index">Home</el-menu-item>
               <el-menu-item index="/recipe">Explore</el-menu-item>
               <el-menu-item index="/recomm" v-if="userInfo.isLoggedIn">Recommend</el-menu-item>
             </el-menu>
@@ -137,7 +136,7 @@ onMounted(async () => {
                     :size="38"
                     :src="userInfo.avatarUrl || undefined"
                     class="theme-avatar-fallback"
-                    @error="() => (userInfo.avatarUrl = '')"
+                    @error="handleHeaderAvatarError"
                   >
                     {{ userInitial }}
                   </el-avatar>
@@ -425,3 +424,4 @@ onMounted(async () => {
   }
 }
 </style>
+

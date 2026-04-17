@@ -1,7 +1,7 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, ref } from 'vue'
 import RecipeCardGrid from './RecipeCardGrid.vue'
-import { parsePagedResult } from '../utils/paginationResult.js'
+import { usePagedRecipeFeed } from '../composables/usePagedRecipeFeed.js'
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -21,12 +21,16 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['like-toggled'])
-
-const pool = ref([])
-const page = ref(0)
 const batchIndex = ref(0)
-const hasNext = ref(true)
-const loading = ref(false)
+
+const { items: pool, currentPage: page, hasNext, loading, loadPage } = usePagedRecipeFeed({
+  fetchPage: (targetPage, pageSize) => props.fetchPage(targetPage, pageSize),
+  pageSize: () => props.poolSize,
+  enabled: () => true,
+  onError: (error) => {
+    console.error(error)
+  },
+})
 
 const totalBatches = computed(() => Math.max(1, Math.ceil(pool.value.length / props.batchSize)))
 
@@ -34,25 +38,6 @@ const visibleItems = computed(() => {
   const start = batchIndex.value * props.batchSize
   return pool.value.slice(start, start + props.batchSize)
 })
-
-const loadPool = async (targetPage = 0) => {
-  if (loading.value) return
-  loading.value = true
-  try {
-    const result = await props.fetchPage(targetPage, props.poolSize)
-    const parsed = parsePagedResult(result)
-    pool.value = parsed.items
-    hasNext.value = parsed.hasNext
-    page.value = targetPage
-    batchIndex.value = 0
-  } catch (error) {
-    console.error(error)
-    pool.value = []
-    hasNext.value = false
-  } finally {
-    loading.value = false
-  }
-}
 
 const switchBatch = async () => {
   if (loading.value) return
@@ -64,14 +49,19 @@ const switchBatch = async () => {
   }
 
   if (hasNext.value) {
-    await loadPool(page.value + 1)
+    await loadPage(page.value + 1)
+    batchIndex.value = 0
     return
   }
 
-  await loadPool(0)
+  await loadPage(0)
+  batchIndex.value = 0
 }
 
-onMounted(() => loadPool(0))
+onMounted(async () => {
+  await loadPage(0)
+  batchIndex.value = 0
+})
 
 defineExpose({
   switchBatch,
@@ -186,3 +176,4 @@ defineExpose({
   }
 }
 </style>
+

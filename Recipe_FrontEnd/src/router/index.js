@@ -9,7 +9,7 @@ import RecommendView from '../views/recommend/index.vue'
 import RecipeDetailView from '../views/recipes/recipe.vue'
 import RecipeCreateView from '../views/recipes/RecipeCreate.vue'
 import AdminRecipesView from '../views/admin/recipes.vue'
-import { isAdminFromLoginStorage } from '../utils/auth'
+import { isAdminFromLoginStorage, isStoredLoginActive } from '../utils/auth'
 
 const routes = [
   {
@@ -73,9 +73,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('loginUser')
-    const exp = localStorage.getItem('token_exp')
-    if (!(token && exp && Date.now() < exp)) {
+    if (!isStoredLoginActive()) {
       ElMessage.warning('Please login first.')
       next({
         path: '/login',

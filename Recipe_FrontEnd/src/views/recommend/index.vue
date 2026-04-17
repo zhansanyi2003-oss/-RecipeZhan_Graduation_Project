@@ -8,14 +8,15 @@ import RecipeCardGrid from '../../component/RecipeCardGrid.vue'
 import RecipeSwitch from '../../component/recipeSwitch.vue'
 import {
   getRecommendationBehaviorApi,
-  getRecommendationExploreCuisinesApi,
-  getRecommendationExploreFlavoursApi,
   getRecommendationExplorePreviewApi,
-  getRecommendationPreferencesApi,
   getRecommendationRightNowApi,
-  getRecommendationSavedSeedApi,
-  getRecommendationTasteApi,
 } from '../../api/recipe.js'
+import {
+  getAllCuisinesApi,
+  getAllFlavoursApi,
+  getTasteRecommendationsApi,
+} from '../../api/recipeCard.js'
+import { getPreferenceApi, getSavedRecipeApi } from '../../api/user.js'
 import { parsePagedResult } from '../../utils/paginationResult.js'
 import { buildExploreTags, buildRecommendationSections } from '../../utils/recommendationPageState.js'
 
@@ -91,7 +92,7 @@ const handleLikeToggled = (recipeId, newStatus) => {
 
 const fetchRightNowPage = (page, pageSize) => getRecommendationRightNowApi(page, pageSize)
 const fetchBehaviorPage = (page, pageSize) => getRecommendationBehaviorApi(page, pageSize)
-const fetchTastePage = (page, pageSize) => getRecommendationTasteApi(page, pageSize)
+const fetchTastePage = (page, pageSize) => getTasteRecommendationsApi(page, pageSize)
 
 const loadExplorePreview = async (tag) => {
   if (!tag) {
@@ -143,7 +144,7 @@ const initializeExploreMode = async (availableCuisines, availableFlavours) => {
 
 const loadSavedSeed = async () => {
   try {
-    const result = await getRecommendationSavedSeedApi()
+    const result = await getSavedRecipeApi(0, 1)
     const parsed = parsePagedResult(result)
     return parsed.items[0] || null
   } catch (error) {
@@ -154,7 +155,7 @@ const loadSavedSeed = async () => {
 
 const loadPreferences = async () => {
   try {
-    const result = await getRecommendationPreferencesApi()
+    const result = await getPreferenceApi()
     if (result.code && result.data) {
       return normalizePreferences(result.data)
     }
@@ -167,8 +168,8 @@ const loadPreferences = async () => {
 
 const loadAvailableTastes = async () => {
   const [cuisineResult, flavourResult] = await Promise.allSettled([
-    getRecommendationExploreCuisinesApi(),
-    getRecommendationExploreFlavoursApi(),
+    getAllCuisinesApi(),
+    getAllFlavoursApi(),
   ])
 
   return {
@@ -619,3 +620,4 @@ onMounted(() => {
   }
 }
 </style>
+

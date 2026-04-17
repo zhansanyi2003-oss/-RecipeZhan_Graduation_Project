@@ -3,6 +3,11 @@ import axios from 'axios'
 import router from '../router'
 
 import { ElMessage } from 'element-plus'
+import { clearStoredLogin } from './auth'
+import { pinia } from '../stores/pinia'
+import { useSessionStore } from '../stores/session'
+
+const sessionStore = useSessionStore(pinia)
 
 const request = axios.create({
   baseURL: '/api',
@@ -18,8 +23,8 @@ request.interceptors.response.use(
     const backendMessage = error?.response?.data?.message || error?.response?.data?.msg
 
     if (status === 401) {
-      localStorage.removeItem('loginUser')
-      localStorage.removeItem('token_exp')
+      clearStoredLogin()
+      sessionStore.clearProfile()
 
       ElMessage.warning(backendMessage || 'Your session expired. Please sign in again.')
 

@@ -40,4 +40,4 @@ spring:
 recipe:
   file:
     upload-dir: ${user.dir}/uploads/
-    upload-url: http://localhost:8888/images/
+    upload-url: /images/

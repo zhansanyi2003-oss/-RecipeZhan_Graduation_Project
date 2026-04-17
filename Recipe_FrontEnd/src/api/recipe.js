@@ -29,14 +29,6 @@ export const deleteRatingApi = (id) => {
   return request.delete(`/recipes/rate?id=${id}`)
 }
 
-export const getRecommendationPreferencesApi = () => {
-  return request.get('/users/preference')
-}
-
-export const getRecommendationSavedSeedApi = () => {
-  return request.get('/users/saved?page=0&pageSize=1')
-}
-
 export const getRecommendationRightNowApi = (
   page = 0,
   pageSize = 12,
@@ -49,18 +41,6 @@ export const getRecommendationRightNowApi = (
       localHour,
     },
   })
-}
-
-export const getRecommendationTasteApi = (page = 0, pageSize = 12) => {
-  return request.get(`/recipes/taste?page=${page}&pageSize=${pageSize}`)
-}
-
-export const getRecommendationExploreCuisinesApi = () => {
-  return request.get('/recipes/cuisines')
-}
-
-export const getRecommendationExploreFlavoursApi = () => {
-  return request.get('/recipes/flavours')
 }
 
 export const getRecommendationBehaviorApi = (page = 0, pageSize = 12) => {
