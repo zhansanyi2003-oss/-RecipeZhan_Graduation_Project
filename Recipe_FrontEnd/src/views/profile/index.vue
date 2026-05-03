@@ -419,7 +419,7 @@ watch(
                   v-model="preferences.flavours"
                   multiple
                   filterable
-                  placeholder="Search or add flavours (e.g. Spicy, Sweet...)"
+                  placeholder="Select flavours from the standard list"
                   size="large"
                   class="modern-select"
                 >
@@ -437,7 +437,7 @@ watch(
                   v-model="preferences.cuisines"
                   multiple
                   filterable
-                  placeholder="Select your favorite cuisines..."
+                  placeholder="Select cuisines from the standard list"
                   size="large"
                   class="modern-select"
                 >
@@ -942,4 +942,3 @@ watch(
   }
 }
 </style>
-

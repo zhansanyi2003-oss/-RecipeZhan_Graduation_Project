@@ -21,7 +21,6 @@ const route = useRoute()
 const SEARCH_STATE_KEY = 'recipe_search_state_v1'
 const defaultSearchState = () => ({
   title: '',
-  ingredientTags: [],
   cookingTimeMin: '',
   flavours: [],
   courses: [],
@@ -58,7 +57,6 @@ const loadSearchState = () => {
       searchRecipe.value = {
         ...defaultSearchState(),
         ...parsed,
-        ingredientTags: normalizeStringArray(parsed.ingredientTags),
         flavours: normalizeStringArray(parsed.flavours),
         courses: normalizeStringArray(parsed.courses),
         cuisines: normalizeStringArray(parsed.cuisines),
@@ -72,19 +70,6 @@ const loadSearchState = () => {
   if (typeof route.query.keyword === 'string' && route.query.keyword.trim()) {
     searchRecipe.value.title = route.query.keyword.trim()
   }
-}
-
-// 3. 食材动态标签的处理逻辑
-const ingredientInputValue = ref('')
-const addIngredientTag = () => {
-  const val = ingredientInputValue.value.trim()
-  if (val && !searchRecipe.value.ingredientTags.includes(val)) {
-    searchRecipe.value.ingredientTags.push(val)
-  }
-  ingredientInputValue.value = '' // 清空输入框
-}
-const removeIngredientTag = (tag) => {
-  searchRecipe.value.ingredientTags = searchRecipe.value.ingredientTags.filter((t) => t !== tag)
 }
 
 // 4. 4宫格下拉框配置 (必须用 ref 包裹，因为有动态数据)
@@ -133,7 +118,6 @@ const filterConfig = ref([
 // 5. 重置所有搜索条件
 const handleReset = () => {
   searchRecipe.value = defaultSearchState()
-  ingredientInputValue.value = ''
   saveSearchState()
   sliceReloadKey.value += 1
 }
@@ -215,7 +199,7 @@ watch(
         <div class="keyword-search-box">
           <el-input
             v-model="searchRecipe.title"
-            placeholder="Input the dish's name..."
+            placeholder="Search dishes, descriptions, or ingredients..."
             size="large"
             clearable
             class="custom-input"
@@ -224,34 +208,6 @@ watch(
               ><el-icon><Search /></el-icon
             ></template>
           </el-input>
-        </div>
-
-        <div class="ingredient-tags-area">
-          <span class="tags-label">
-            <el-button class="btn-ui btn-ui--brand ingredient-label-btn" :icon="Search"
-              >Ingredients:</el-button
-            ></span
-          >
-
-          <el-tag
-            v-for="tag in searchRecipe.ingredientTags"
-            :key="tag"
-            closable
-            effect="dark"
-            color="#4ea685"
-            class="ingredient-tag"
-            @close="removeIngredientTag(tag)"
-          >
-            {{ tag }}
-          </el-tag>
-          <el-input
-            v-model="ingredientInputValue"
-            class="tag-input"
-            size="small"
-            placeholder="+ Add (Press Enter)"
-            @keyup.enter="addIngredientTag"
-            @blur="addIngredientTag"
-          />
         </div>
         <div class="flex-filter-grid">
           <div v-for="item in filterConfig" :key="item.prop" class="flex-filter-item">
@@ -360,7 +316,7 @@ watch(
 
 /* 菜名搜索框 */
 .keyword-search-box {
-  margin-bottom: 15px; /* 间距改小点，下面要放食材标签 */
+  margin-bottom: 32px;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -374,47 +330,6 @@ watch(
 :deep(.custom-input .el-input__inner) {
   color: #333;
   font-weight: bold;
-}
-
-/* ✨ 新增：食材动态标签区样式 */
-.ingredient-tags-area {
-  max-width: 600px;
-  margin: 0 auto 35px auto; /* 居中，并和下方的4宫格拉开距离 */
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px; /* 标签和框之间的间距 */
-}
-.tags-label {
-  font-size: 14px;
-  font-weight: bold;
-  color: #ffe0b2;
-  margin-right: 8px;
-}
-
-.ingredient-label-btn {
-  min-height: 36px;
-}
-.ingredient-tag {
-  border: none;
-  border-radius: 12px;
-}
-
-.tag-input {
-  width: 140px;
-}
-:deep(.tag-input .el-input__wrapper) {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  box-shadow: none;
-  padding: 0 10px;
-}
-:deep(.tag-input .el-input__inner) {
-  color: white;
-  font-size: 12px;
-}
-:deep(.tag-input .el-input__inner::placeholder) {
-  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ✨ 新增：4宫格 Flex 居中布局 */
@@ -570,10 +485,6 @@ watch(
     margin-bottom: 12px;
   }
 
-  .ingredient-tags-area {
-    margin-bottom: 20px;
-  }
-
   .search-btn {
     width: 100%;
     justify-content: center;
@@ -618,15 +529,6 @@ watch(
 
   .panel-header {
     margin-bottom: 14px;
-  }
-
-  .ingredient-tags-area {
-    gap: 6px;
-  }
-
-  .tag-input {
-    width: 100%;
-    min-width: 0;
   }
 }
 </style>

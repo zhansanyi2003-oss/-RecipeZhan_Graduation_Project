@@ -6,15 +6,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zhan.recipe_backend.dto.RatingStatsDto;
 import org.zhan.recipe_backend.entity.Recipe;
 import org.zhan.recipe_backend.entity.Recipe_Rating;
+import org.zhan.recipe_backend.exception.ConflictException;
+import org.zhan.recipe_backend.exception.ResourceNotFoundException;
 import org.zhan.recipe_backend.repository.RatingRepository;
 import org.zhan.recipe_backend.repository.RecipeRepository;
+import org.zhan.recipe_backend.service.RatingService;
+import org.zhan.recipe_backend.service.RecipeSearchSyncService;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
-public class RatingServiceImpl {
+public class RatingServiceImpl implements RatingService {
 
     @Autowired
     private RatingRepository ratingRepository;
@@ -22,10 +24,11 @@ public class RatingServiceImpl {
     private RecipeRepository recipeRepository;
 
     @Autowired
-    private RecipeServiceImpl recipeService;
+    private RecipeSearchSyncService recipeSearchSyncService;
 
 
     @Transactional
+    @Override
     public  RatingStatsDto submitRating(Long recipeId, Long userId, Double score) {
 
         Optional<Recipe_Rating> existingRating = ratingRepository.findByUserIdAndRecipeId(userId, recipeId);
@@ -48,25 +51,26 @@ public class RatingServiceImpl {
 
         Double formattedAvg = Math.round(newAvg * 10.0) / 10.0;
         Recipe recipe = recipeRepository.findById(recipeId)
-                .orElseThrow(() -> new RuntimeException("Recipe not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found"));
 
         recipe.setAverageRating(formattedAvg);
         recipe.setRatingCount(newCount);
-        recipeRepository.save(recipe);
-        recipeService.syncToElasticsearch(recipe);
+        Recipe savedRecipe = recipeRepository.save(recipe);
+        recipeSearchSyncService.enqueueUpsert(savedRecipe.getId());
         return new RatingStatsDto(newAvg,newCount);
 
 
     }
 
     @Transactional
+    @Override
     public RatingStatsDto deleteRating(Long id, Long userId) {
         Recipe_Rating existingRating = ratingRepository.findByUserIdAndRecipeId(userId, id)
-                .orElseThrow(() -> new RuntimeException("您还未对该食谱打分，无法取消！"));
+                .orElseThrow(() -> new ConflictException("You have not rated this recipe yet."));
         ratingRepository.delete(existingRating);
         ratingRepository.flush();
         Recipe recipe = recipeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("食谱不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found"));
 
         // 去打分表里重新数一下这道菜还剩多少人打分
         int newCount = ratingRepository.countByRecipeId(id);
@@ -74,8 +78,8 @@ public class RatingServiceImpl {
         newAvg = Math.round(newAvg * 10.0) / 10.0;
         recipe.setRatingCount(newCount);
         recipe.setAverageRating(newAvg);
-        recipeRepository.save(recipe);
-        recipeService.syncToElasticsearch(recipe);
+        Recipe savedRecipe = recipeRepository.save(recipe);
+        recipeSearchSyncService.enqueueUpsert(savedRecipe.getId());
         return new RatingStatsDto(newAvg,newCount);
 
     }

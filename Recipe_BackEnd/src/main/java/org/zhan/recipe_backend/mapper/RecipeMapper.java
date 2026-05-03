@@ -1,11 +1,14 @@
 package org.zhan.recipe_backend.mapper;
 
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.zhan.recipe_backend.document.RecipeDoc;
 import org.zhan.recipe_backend.dto.IngredientDto;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
+import org.zhan.recipe_backend.dto.RecipeRequestDto;
 import org.zhan.recipe_backend.entity.*;
 
 @Mapper(componentModel = "spring", uses = UserMapper.class)
@@ -26,6 +29,22 @@ public interface RecipeMapper {
     @Mapping(target = "isLiked", ignore = true)
     @Mapping(target = "userScore", ignore = true)
     RecipeDetailDto toDetailDto(Recipe recipe);
+
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(source = "title", target = "title")
+    @Mapping(source = "coverImage", target = "coverImage")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "cookingTimeMin", target = "cookingTimeMin")
+    @Mapping(source = "difficulty", target = "difficulty")
+    Recipe toRecipe(RecipeRequestDto dto);
+
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(source = "title", target = "title")
+    @Mapping(source = "coverImage", target = "coverImage")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "cookingTimeMin", target = "cookingTimeMin")
+    @Mapping(source = "difficulty", target = "difficulty")
+    void updateRecipeFromRequest(RecipeRequestDto dto, @MappingTarget Recipe recipe);
 
     @Mapping(source = "recipeFlavours", target = "flavours")
     @Mapping(source = "recipeCourses", target = "courses")

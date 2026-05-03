@@ -8,10 +8,6 @@ import java.util.List;
 public interface RecipeCardService {
     Slice<RecipeCardDto> getRecipeCards(RecipeCardDto cardParam, int page, int size) ;
 
-    List<String> getFlavours();
-
-    List<String>  getCuisines();
-
     List<String> getIngredients();
     List<RecipeCardDto> getHeroRecommendations(Integer hour);
     Slice<RecipeCardDto> getPersonalizedRecommendations(Integer hour, int page, int pageSize);

@@ -1,6 +1,6 @@
 package org.zhan.recipe_backend.controller;
 
-
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -8,9 +8,10 @@ import org.zhan.recipe_backend.common.Result;
 import org.zhan.recipe_backend.dto.RatingRequestDto;
 import org.zhan.recipe_backend.dto.RecipeCardDto;
 import org.zhan.recipe_backend.dto.RecipeDetailDto;
+import org.zhan.recipe_backend.dto.RecipeRequestDto;
+import org.zhan.recipe_backend.service.RatingService;
 import org.zhan.recipe_backend.service.RecipeCardService;
 import org.zhan.recipe_backend.service.RecipeService;
-import org.zhan.recipe_backend.service.impl.RatingServiceImpl;
 
 @RestController
 @RequestMapping("/api/recipes")
@@ -22,7 +23,7 @@ public class RecipeController {
     @Autowired
     private RecipeService recipeService;
     @Autowired
-    private RatingServiceImpl ratingService;
+    private RatingService ratingService;
 
 
     @PostMapping("")
@@ -31,18 +32,6 @@ public class RecipeController {
         return Result.Success(recipeCardService.getRecipeCards(dto, page, pageSize));
     }
 
-
-    @GetMapping("/flavours")
-    public Result getFlavours() {
-
-        return Result.Success(recipeCardService.getFlavours());
-    }
-
-    @GetMapping("/cuisines")
-    public Result getCuisines() {
-
-        return Result.Success(recipeCardService.getCuisines());
-    }
     @GetMapping("/ingredients")
     public Result getIngredients() {
 
@@ -91,33 +80,35 @@ public class RecipeController {
 
 
     @DeleteMapping("/rate")
-    public Result deleteRecipe(@RequestParam("id") Long id) {
+    public Result deleteRating(@RequestParam("id") Long id) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         return Result.Success(ratingService.deleteRating(id,userId));
     }
 
     @PostMapping("/create")
-    public Result addRecipe(@RequestBody RecipeDetailDto dto) {
+    public Result addRecipe(@Valid @RequestBody RecipeRequestDto dto) {
         recipeService.addRecipe(dto);
         return Result.Success();
     }
 
     @PutMapping("/{id:\\d+}")
-    public Result updateRecipe(@PathVariable Long id, @RequestBody RecipeDetailDto dto) {
+    public Result updateRecipe(@PathVariable Long id, @Valid @RequestBody RecipeRequestDto dto) {
         recipeService.updateRecipe(id, dto);
         return Result.Success();
     }
 
+    @DeleteMapping("/{id:\\d+}")
+    public Result deleteRecipe(@PathVariable Long id) {
+        recipeService.deleteRecipe(id);
+        return Result.Success();
+    }
+
     @PostMapping("/rate")
-    public Result submitRating(@RequestBody RatingRequestDto dto) {
+    public Result submitRating(@Valid @RequestBody RatingRequestDto dto) {
 
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        try {
-            return Result.Success(ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore()));
-        } catch (Exception e) {
-            return Result.Error("Failed to submit rating");
-        }
+        return Result.Success(ratingService.submitRating(dto.getRecipeId(), userId, dto.getScore()));
     }
 }

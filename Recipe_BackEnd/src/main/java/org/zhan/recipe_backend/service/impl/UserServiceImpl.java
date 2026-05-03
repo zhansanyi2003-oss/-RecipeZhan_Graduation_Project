@@ -70,8 +70,7 @@ public class UserServiceImpl implements UserService {
 
         User newUser = new User();
         BeanUtils.copyProperties(user, newUser);
-        User existingUser = userRepository.findByUsername(newUser.getUsername());
-        if (existingUser != null) {
+        if (userRepository.existsByUsername(newUser.getUsername()) || userRepository.existsByEmail(newUser.getEmail())) {
            return  false;
         }
 
@@ -158,7 +157,7 @@ public class UserServiceImpl implements UserService {
     public Boolean toggleSaveRecipe(Long recipeId,Boolean status) {
         Long userId =AuthUtils.getCurrentUserIdOrNull();
         if (status) {
-            userSavedRepository.saveRecipe(recipeId,userId);
+            userSavedRepository.saveRecipe(userId, recipeId);
             return true;
         } else {
             userSavedRepository.deleteByUserIdAndRecipeId(userId, recipeId);

@@ -62,7 +62,19 @@ const rules = ref({
   courses: [{ type: 'array', required: true, message: 'Required', trigger: 'change' }],
 })
 
-const uploadActionUrl = 'http://localhost:8888/api/upload'
+const uploadActionUrl = '/api/upload'
+const dietTypeOptions = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 'Halal']
+const uploadHeaders = computed(() => {
+  const storedLogin = localStorage.getItem('loginUser')
+  if (!storedLogin) return {}
+
+  try {
+    const loginUser = JSON.parse(storedLogin)
+    return loginUser?.Authorization ? { Authorization: loginUser.Authorization } : {}
+  } catch {
+    return {}
+  }
+})
 
 const handleCoverSuccess = (response) => {
   if (response.code === 1) {
@@ -263,6 +275,7 @@ onMounted(async () => {
                 <el-upload
                   class="classic-uploader"
                   :action="uploadActionUrl"
+                  :headers="uploadHeaders"
                   name="file"
                   :show-file-list="false"
                   :on-success="handleCoverSuccess"
@@ -366,7 +379,7 @@ onMounted(async () => {
                   filterable
                   allow-create
                   default-first-option
-                  placeholder="e.g. Italian"
+                  placeholder="Select or add cuisines"
                   class="w-full"
                   size="large"
                 >
@@ -382,7 +395,7 @@ onMounted(async () => {
                   filterable
                   allow-create
                   default-first-option
-                  placeholder="e.g. Spicy"
+                  placeholder="Select or add flavours"
                   class="w-full"
                   size="large"
                 >
@@ -396,16 +409,16 @@ onMounted(async () => {
                   v-model="form.dietTypes"
                   multiple
                   filterable
-                  allow-create
-                  default-first-option
                   placeholder="e.g. Vegan"
                   class="w-full"
                   size="large"
                 >
-                  <el-option label="Vegetarian" value="Vegetarian" />
-                  <el-option label="Vegan" value="Vegan" />
-                  <el-option label="Gluten-Free" value="Gluten-Free" />
-                  <el-option label="Dairy-Free" value="Dairy-Free" />
+                  <el-option
+                    v-for="item in dietTypeOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -493,6 +506,7 @@ onMounted(async () => {
                         <el-upload
                           class="step-uploader"
                           :action="uploadActionUrl"
+                          :headers="uploadHeaders"
                           name="file"
                           :show-file-list="false"
                           :on-success="(res) => handleStepImgSuccess(res, index)"

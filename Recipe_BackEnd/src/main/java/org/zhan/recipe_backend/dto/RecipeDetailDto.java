@@ -1,10 +1,7 @@
 package org.zhan.recipe_backend.dto;
 
 import lombok.Data;
-import org.zhan.recipe_backend.common.CourseEnum;
 import org.zhan.recipe_backend.common.DiffEnum;
-import org.zhan.recipe_backend.entity.Ingredient;
-import org.zhan.recipe_backend.entity.RecipeStep;
 
 import java.util.List;
 

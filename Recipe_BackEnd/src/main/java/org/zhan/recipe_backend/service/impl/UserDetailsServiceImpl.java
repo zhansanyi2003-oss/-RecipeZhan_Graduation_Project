@@ -24,8 +24,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("用户不存在");
         }
 
-        // 把数据库里的 User 包装成 Spring Security 认识的对象
-        // 注意：这里一定要查出加密后的 password
         return new RecipeUserDetails(user);
     }
 }

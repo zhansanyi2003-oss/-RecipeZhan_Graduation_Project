@@ -1,10 +1,12 @@
 package org.zhan.recipe_backend.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import org.zhan.recipe_backend.common.RoleEnum;
 
 @Data
 public class UserLoginDto {
+    @NotBlank(message = "Username is required")
     private String username;
+    @NotBlank(message = "Password is required")
     private  String password;
 }

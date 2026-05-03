@@ -4,10 +4,10 @@ export const getRecipeCardApi = (recipes, page, size) => {
   return request.post(`/recipes?page=${page}&pageSize=${size}`, recipes)
 }
 export const getAllCuisinesApi = () => {
-  return request.get(`/recipes/cuisines`)
+  return request.get(`/taxonomy/cuisines`)
 }
 export const getAllFlavoursApi = () => {
-  return request.get(`/recipes/flavours`)
+  return request.get(`/taxonomy/flavours`)
 }
 
 export const getAllIngredientsApi = () => {

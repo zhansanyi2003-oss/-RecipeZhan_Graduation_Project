@@ -34,6 +34,42 @@ class RecipeCardServiceImplTest {
     }
 
     @Test
+    void getRecipeCards_usesUnifiedKeywordSearchAcrossTitleDescriptionAndIngredients() {
+        RecipeCardServiceImpl service = new RecipeCardServiceImpl();
+        ElasticsearchOperations elasticsearchOperations = mock(ElasticsearchOperations.class);
+        UserSavedRepository userSavedRepository = mock(UserSavedRepository.class);
+        @SuppressWarnings("unchecked")
+        SearchHits<RecipeDoc> searchHits = mock(SearchHits.class);
+
+        RecipeCardDto request = new RecipeCardDto();
+        request.setTitle("chicken");
+
+        when(userSavedRepository.findRecipeIdsByUserId(1L)).thenReturn(Set.of());
+        when(searchHits.getSearchHits()).thenReturn(Collections.emptyList());
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(RecipeDoc.class))).thenReturn(searchHits);
+
+        ReflectionTestUtils.setField(service, "elasticsearchOperations", elasticsearchOperations);
+        ReflectionTestUtils.setField(service, "userSavedRepository", userSavedRepository);
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, Collections.emptyList())
+        );
+
+        var result = service.getRecipeCards(request, 0, 12);
+
+        ArgumentCaptor<NativeQuery> queryCaptor = ArgumentCaptor.forClass(NativeQuery.class);
+        verify(elasticsearchOperations, times(1)).search(queryCaptor.capture(), eq(RecipeDoc.class));
+
+        assertNotNull(result);
+        assertTrue(result.getContent().isEmpty(), "empty search hits should map to an empty slice");
+
+        String serializedQuery = queryCaptor.getValue().getQuery().toString();
+        assertTrue(serializedQuery.contains("title"), "keyword search should target title");
+        assertTrue(serializedQuery.contains("description"), "keyword search should target description");
+        assertTrue(serializedQuery.contains("ingredients"), "keyword search should target ingredients");
+    }
+
+    @Test
     void getTasteRecommendations_usesSingleSearchAndFunctionScoreSignals() {
         RecipeCardServiceImpl service = new RecipeCardServiceImpl();
         ElasticsearchOperations elasticsearchOperations = mock(ElasticsearchOperations.class);

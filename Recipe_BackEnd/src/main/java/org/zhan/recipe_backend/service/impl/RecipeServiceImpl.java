@@ -1,26 +1,19 @@
 package org.zhan.recipe_backend.service.impl;
 
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.zhan.recipe_backend.document.RecipeDoc;
 import org.zhan.recipe_backend.dto.*;
 import org.zhan.recipe_backend.entity.*;
+import org.zhan.recipe_backend.exception.ForbiddenOperationException;
 import org.zhan.recipe_backend.mapper.RecipeMapper;
 import org.zhan.recipe_backend.repository.*;
+import org.zhan.recipe_backend.service.RecipeSearchSyncService;
 import org.zhan.recipe_backend.service.RecipeService;
 import org.zhan.recipe_backend.utils.AuthUtils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 @Service
 public class RecipeServiceImpl implements RecipeService {
@@ -29,14 +22,6 @@ public class RecipeServiceImpl implements RecipeService {
     private RecipeRepository recipeRepository;
     @Autowired
     private  UserRepository userRepository;
-    @Autowired
-    private FlavourRepository flavourRepository;
-    @Autowired
-    private CourseRepository courseRepository;
-    @Autowired
-    private IngredientRepository ingredientRepository;
-    @Autowired
-    private  CuisineRepository cuisineRepository;
 
     @Autowired
     private  UserSavedRepository userSavedRepository;
@@ -45,12 +30,14 @@ public class RecipeServiceImpl implements RecipeService {
     private RecipeMapper recipeMapper;
 
     @Autowired
-   private  RecipeEsRepository recipeEsRepository;
+    private RecipeSearchSyncService recipeSearchSyncService;
+
+    @Autowired
+    private RecipeRelationAssembler recipeRelationAssembler;
 
     @Autowired
     private RatingRepository ratingRepository;
-    @Autowired
-    private DietTypeRepository dietTypeRepository;
+
     @Override
     public RecipeDetailDto getRecipes(Long id) {
         Recipe recipe = recipeRepository.findById(id)
@@ -72,164 +59,59 @@ public class RecipeServiceImpl implements RecipeService {
 
     @Transactional
     @Override
-    public void addRecipe(RecipeDetailDto dto) {
-        Recipe recipe = new Recipe();
-        BeanUtils.copyProperties(dto, recipe);
+    public void addRecipe(RecipeRequestDto dto) {
+        Recipe recipe = recipeMapper.toRecipe(dto);
         long currentUserId=AuthUtils.getCurrentUserIdOrNull();
         User author = userRepository.getReferenceById(currentUserId);
         recipe.setAuthor(author);
-        recipe.setRecipeFlavours(buildFlavours(dto.getFlavours(), recipe));
-        recipe.setRecipeCourses(buildCourses(dto.getCourses(), recipe));
-        recipe.setRecipeCuisines(buildCuisines(dto.getCuisines(), recipe));
-        recipe.setRecipeIngredients(buildIngredients(dto.getIngredients(), recipe));
-        recipe.setRecipeDietTypes(buildDietType(dto.getDietTypes(),recipe));
-        recipe.setSteps(buildSteps(dto.getSteps(), recipe));
+        recipeRelationAssembler.applyRelations(recipe, dto);
         Recipe savedRecipe = recipeRepository.save(recipe);
-        syncToElasticsearch(savedRecipe);
+        recipeSearchSyncService.enqueueUpsert(savedRecipe.getId());
     }
 
     @Transactional
     @Override
-    public void updateRecipe(Long id, RecipeDetailDto dto) {
+    public void updateRecipe(Long id, RecipeRequestDto dto) {
         Long currentUserId = AuthUtils.getCurrentUserIdOrNull();
 
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
 
-        boolean isOwner = recipe.getAuthor() != null && recipe.getAuthor().getId().equals(currentUserId);
-        boolean isAdmin = AuthUtils.isAdmin();
-
-        if (!isOwner && !isAdmin) {
-            throw new RuntimeException("You can only edit your own recipe.");
-        }
+        assertCanModifyRecipe(recipe, currentUserId);
 
         applyRecipeUpdate(recipe, dto);
 
         Recipe savedRecipe = recipeRepository.save(recipe);
-        syncToElasticsearch(savedRecipe);
+        recipeSearchSyncService.enqueueUpsert(savedRecipe.getId());
     }
 
-    private List<Recipe_Flavour> buildFlavours(List<String> names, Recipe recipe) {
-        if (names == null) return new ArrayList<>();
-        return names.stream().map(name -> {
-            Flavour flavour = flavourRepository.findByName(name)
-                    .orElseGet(() -> flavourRepository.save(Flavour.builder().name(name).build()));
-            Recipe_Flavour relation = new Recipe_Flavour();
-            relation.setRecipe(recipe);
-            relation.setFlavour(flavour);
-            return relation;
-        }).collect(Collectors.toList());
+    @Transactional
+    @Override
+    public void deleteRecipe(Long id) {
+        Long currentUserId = AuthUtils.getCurrentUserIdOrNull();
+
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Recipe not found, id: " + id));
+
+        assertCanModifyRecipe(recipe, currentUserId);
+
+        userSavedRepository.deleteByRecipeId(id);
+        ratingRepository.deleteByRecipeId(id);
+        recipeRepository.delete(recipe);
+        recipeSearchSyncService.enqueueDelete(id);
     }
 
-    private List<Recipe_Course> buildCourses(List<String> names, Recipe recipe) {
-        if (names == null) return new ArrayList<>();
-        return names.stream().map(name -> {
-            Course course = courseRepository.findByName(name)
-                    .orElseGet(() -> courseRepository.save(Course.builder().name(name).build()));
-            Recipe_Course relation = new Recipe_Course();
-            relation.setRecipe(recipe);
-            relation.setCourse(course);
-            return relation;
-        }).collect(Collectors.toList());
+    private void applyRecipeUpdate(Recipe recipe, RecipeRequestDto dto) {
+        recipeMapper.updateRecipeFromRequest(dto, recipe);
+        recipeRelationAssembler.applyRelations(recipe, dto);
     }
 
-    private List<Recipe_Cuisine> buildCuisines(List<String> names, Recipe recipe) {
-        if (names == null) return new ArrayList<>();
-        return names.stream().map(name -> {
-            Cuisine cuisine = cuisineRepository.findByName(name)
-                    .orElseGet(() -> cuisineRepository.save(Cuisine.builder().name(name).build()));
-            Recipe_Cuisine relation = new Recipe_Cuisine();
-            relation.setRecipe(recipe);
-            relation.setCuisine(cuisine);
-            return relation;
-        }).collect(Collectors.toList());
-    }
+    private void assertCanModifyRecipe(Recipe recipe, Long currentUserId) {
+        boolean isOwner = recipe.getAuthor() != null && recipe.getAuthor().getId().equals(currentUserId);
+        boolean isAdmin = AuthUtils.isAdmin();
 
-    private List<Recipe_DietType> buildDietType(List<String> names, Recipe recipe) {
-        if (names == null) return new ArrayList<>();
-        return names.stream().map(name -> {
-            DietType dietType = dietTypeRepository.findByName(name)
-                    .orElseGet(() -> dietTypeRepository.save(DietType.builder().name(name).build()));
-            Recipe_DietType relation = new Recipe_DietType();
-            relation.setRecipe(recipe);
-            relation.setDietType(dietType);
-            return relation;
-        }).collect(Collectors.toList());
-    }
-
-    private List<Recipe_Ingredient> buildIngredients(List<IngredientDto> dtos, Recipe recipe) {
-        if (dtos == null) return new ArrayList<>();
-        return dtos.stream().map(ingDto -> {
-            Ingredient ingredient = ingredientRepository.findByName(ingDto.getName())
-                    .orElseGet(() -> ingredientRepository.save(Ingredient.builder().name(ingDto.getName()).build()));
-            Recipe_Ingredient relation = new Recipe_Ingredient();
-            relation.setRecipe(recipe);
-            relation.setIngredient(ingredient);
-            relation.setAmount(ingDto.getAmount());
-            relation.setNote(ingDto.getNote());
-            return relation;
-        }).collect(Collectors.toList());
-    }
-
-    private List<RecipeStep> buildSteps(List<RecipeStepDto> dtos, Recipe recipe) {
-        if (dtos == null) return new ArrayList<>();
-        List<RecipeStep> steps = new ArrayList<>();
-        for (int i = 0; i < dtos.size(); i++) {
-            RecipeStepDto stepDto = dtos.get(i);
-            RecipeStep step = new RecipeStep();
-            step.setRecipe(recipe);
-            step.setStepNumber(i + 1);
-            step.setContent(stepDto.getContent());
-            step.setImageUrls(stepDto.getImageUrls());
-            steps.add(step);
-        }
-        return steps;
-    }
-
-    private <T> void syncCollection(List<T> current, List<T> replacement, Consumer<List<T>> setter) {
-        if (current == null) {
-            setter.accept(replacement);
-            return;
-        }
-        current.clear();
-        current.addAll(replacement);
-    }
-
-    private void applyRecipeUpdate(Recipe recipe, RecipeDetailDto dto) {
-        BeanUtils.copyProperties(dto, recipe, "id", "author", "averageRating", "ratingCount", "createdAt", "updatedAt");
-
-        syncCollection(recipe.getRecipeFlavours(), buildFlavours(dto.getFlavours(), recipe), recipe::setRecipeFlavours);
-        syncCollection(recipe.getRecipeCourses(), buildCourses(dto.getCourses(), recipe), recipe::setRecipeCourses);
-        syncCollection(recipe.getRecipeCuisines(), buildCuisines(dto.getCuisines(), recipe), recipe::setRecipeCuisines);
-        syncCollection(recipe.getRecipeDietTypes(), buildDietType(dto.getDietTypes(), recipe), recipe::setRecipeDietTypes);
-        syncCollection(recipe.getRecipeIngredients(), buildIngredients(dto.getIngredients(), recipe), recipe::setRecipeIngredients);
-        syncCollection(recipe.getSteps(), buildSteps(dto.getSteps(), recipe), recipe::setSteps);
-    }
-
-
-
-    public void syncToElasticsearch(Recipe recipe) {
-        try {
-
-            RecipeDoc esDoc = recipeMapper.toRecipeDoc(recipe);
-            recipeEsRepository.save(esDoc);
-
-        } catch (Exception e) {
-
-
+        if (!isOwner && !isAdmin) {
+            throw new ForbiddenOperationException("You can only modify your own recipe.");
         }
     }
-
-    private void deleteFromElasticsearch(Long recipeId) {
-        try {
-            recipeEsRepository.deleteById(recipeId);
-
-        } catch (Exception e) {
-
-        }
-    }
-
-
-
-
 }

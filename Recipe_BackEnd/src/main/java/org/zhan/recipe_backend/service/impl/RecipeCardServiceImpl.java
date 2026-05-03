@@ -31,12 +31,6 @@ import java.util.stream.Collectors;
 @Service
 public class RecipeCardServiceImpl implements RecipeCardService {
 
-
-    @Autowired
-    private FlavourRepository flavourRepository;
-    @Autowired
-    private CuisineRepository cuisineRepository;
-
     @Autowired
     private UserSavedRepository userSavedRepository;
 
@@ -57,9 +51,13 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         BoolQuery.Builder filterBool = new BoolQuery.Builder();
 
-        // 1. Keyword search -> Must context (calculates relevance score)
+        // 1. Unified keyword search across title, description, and ingredient text.
         if (cardParam.getTitle() != null && !cardParam.getTitle().trim().isEmpty()) {
-            filterBool.must(m -> m.match(t -> t.field("title").query(cardParam.getTitle().trim())));
+            String keyword = cardParam.getTitle().trim();
+            filterBool.must(m -> m.multiMatch(mm -> mm
+                    .query(keyword)
+                    .fields("title^3", "ingredients^2", "description")
+            ));
         }
 
         if (cardParam.getFlavours() != null && !cardParam.getFlavours().isEmpty()) {
@@ -473,22 +471,6 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
     }
 
-
-    @Override
-    public List<String> getFlavours() {
-        List<Flavour> flavours = flavourRepository.findAll();
-        return flavours.stream()
-                .map(Flavour::getName)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<String> getCuisines() {
-        List<Cuisine> cuisines = cuisineRepository.findAll();
-        return cuisines.stream()
-                .map(Cuisine::getName) // 只提取名字
-                .collect(Collectors.toList());
-    }
 
     @Override
     public List<String> getIngredients() {

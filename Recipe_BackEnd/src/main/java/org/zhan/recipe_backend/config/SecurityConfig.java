@@ -65,12 +65,10 @@ public class SecurityConfig {
                         // 允许所有人访问的接口 (游客区)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
-
                         .requestMatchers(HttpMethod.POST,"/api/login", "/api/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/recipes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/recipes/**").permitAll()
-                        .requestMatchers("/api/upload/**").permitAll()
-                        .requestMatchers("/images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/taxonomy/**").permitAll()
                         .anyRequest().authenticated()
                 );
 
