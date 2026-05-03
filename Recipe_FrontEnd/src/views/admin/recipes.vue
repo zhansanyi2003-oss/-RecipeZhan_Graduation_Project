@@ -1,0 +1,350 @@
+<script setup>
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, Edit, Search } from '@element-plus/icons-vue'
+import RecipeSliceList from '../../component/RecipeSliceList.vue'
+import { deleteAdminRecipeApi, getAdminRecipesApi } from '../../api/user'
+
+const router = useRouter()
+const sliceRef = ref()
+const reloadKey = ref(0)
+const searchKeyword = ref('')
+const committedKeyword = ref('')
+const totalShown = ref(0)
+
+const sectionTitle = computed(() =>
+  committedKeyword.value
+    ? `Admin Recipe Management - "${committedKeyword.value}"`
+    : 'Admin Recipe Management',
+)
+
+const fetchAdminRecipePage = async (page, pageSize) => {
+  return await getAdminRecipesApi(page, pageSize, committedKeyword.value)
+}
+
+const applySearch = () => {
+  committedKeyword.value = searchKeyword.value.trim()
+  reloadKey.value += 1
+}
+
+const resetSearch = () => {
+  searchKeyword.value = ''
+  committedKeyword.value = ''
+  reloadKey.value += 1
+}
+
+const onItemsChange = (items) => {
+  totalShown.value = items.length
+}
+
+const goToEditRecipe = (id) => {
+  router.push(`/recipe/edit/${id}`)
+}
+
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString()
+}
+
+const deleteRecipe = async (id, title) => {
+  try {
+    await ElMessageBox.confirm(
+      `Delete recipe "${title}"? This action cannot be undone.`,
+      'Confirm Delete',
+      {
+        type: 'warning',
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+      },
+    )
+  } catch (error) {
+    return
+  }
+
+  try {
+    const res = await deleteAdminRecipeApi(id)
+    if (!res.code) {
+      ElMessage.error(res.msg || 'Failed to delete recipe.')
+      return
+    }
+    await sliceRef.value?.refresh()
+    ElMessage.success('Recipe deleted successfully.')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.msg || 'Failed to delete recipe.')
+  }
+}
+</script>
+
+<template>
+  <div class="admin-page">
+    <section class="admin-hero">
+      <div class="hero-left">
+        <h1>{{ sectionTitle }}</h1>
+        <p>Review, edit, and moderate all recipes from one place.</p>
+      </div>
+      <div class="hero-metrics">
+        <span class="metric-label">Loaded Cards</span>
+        <strong>{{ totalShown }}</strong>
+      </div>
+    </section>
+
+    <section class="admin-toolbar">
+      <el-input
+        v-model="searchKeyword"
+        clearable
+        size="large"
+        placeholder="Search recipes by title..."
+        class="search-input"
+        @keyup.enter="applySearch"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+      <div class="toolbar-actions">
+        <el-button class="btn-ui btn-ui--brand" size="large" @click="applySearch">Search</el-button>
+        <el-button class="btn-ui btn-ui--outline" size="large" @click="resetSearch">Reset</el-button>
+      </div>
+    </section>
+
+    <RecipeSliceList
+      ref="sliceRef"
+      :fetch-page="fetchAdminRecipePage"
+      :reload-key="reloadKey"
+      :page-size="12"
+      :xs="24"
+      :sm="12"
+      :md="8"
+      :lg="6"
+      :xl="6"
+      load-more-text="Load More Recipes ..."
+      no-more-text="No more recipes to manage."
+      empty-description="No matching recipes."
+      @items-change="onItemsChange"
+    >
+      <template #item="{ recipe }">
+        <article class="admin-card">
+          <div class="cover-wrap">
+            <img :src="recipe.coverImage" :alt="recipe.title" class="cover" />
+          </div>
+
+          <div class="admin-card-body">
+            <h3 :title="recipe.title">{{ recipe.title }}</h3>
+            <div class="meta-line">
+              <span>Author: {{ recipe.authorName || 'Unknown' }}</span>
+              <span>{{ recipe.cookingTimeMin || '-' }} mins</span>
+            </div>
+            <div class="meta-line muted">
+              <span>Rating: {{ recipe.averageRating ?? 0 }} ({{ recipe.ratingCount ?? 0 }})</span>
+              <span>Updated: {{ formatDateTime(recipe.updatedAt) }}</span>
+            </div>
+            <div class="admin-actions">
+              <el-button
+                size="small"
+                class="admin-action-btn edit-btn btn-ui btn-ui--brand btn-ui--compact"
+                :icon="Edit"
+                @click.stop="goToEditRecipe(recipe.id)"
+              >
+                Edit
+              </el-button>
+              <el-button
+                size="small"
+                class="admin-action-btn delete-btn btn-ui btn-ui--danger btn-ui--compact"
+                :icon="Delete"
+                @click.stop="deleteRecipe(recipe.id, recipe.title)"
+              >
+                Delete
+              </el-button>
+            </div>
+          </div>
+        </article>
+      </template>
+    </RecipeSliceList>
+  </div>
+</template>
+
+<style scoped>
+.admin-page {
+  width: 100%;
+  padding: 8px 0 24px;
+}
+
+.admin-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid #d4ebe1;
+  background: linear-gradient(135deg, #eef7f4 0%, #f8fcfa 100%);
+}
+
+.hero-left h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #1f3b33;
+}
+
+.hero-left p {
+  margin: 6px 0 0;
+  color: #4f6b62;
+  font-size: 0.95rem;
+}
+
+.hero-metrics {
+  min-width: 120px;
+  text-align: right;
+}
+
+.metric-label {
+  display: block;
+  color: #6f8b82;
+  font-size: 0.78rem;
+}
+
+.hero-metrics strong {
+  color: #2a5d4c;
+  font-size: 1.35rem;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.search-input {
+  flex: 1;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-card {
+  width: 100%;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e8ecef;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(29, 60, 50, 0.08);
+}
+
+.cover-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f4f7f8;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-card-body {
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.admin-card-body h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: #1f2f46;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.meta-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #4b5d71;
+  font-size: 0.84rem;
+}
+
+.meta-line.muted {
+  color: #7a8796;
+}
+
+.admin-actions {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.admin-action-btn {
+  width: 100%;
+}
+
+.edit-btn {
+  justify-content: center;
+}
+
+.delete-btn {
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding-top: 0;
+  }
+
+  .admin-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    padding: 14px;
+  }
+
+  .hero-left h1 {
+    font-size: 1.1rem;
+  }
+
+  .hero-metrics {
+    min-width: auto;
+    text-align: left;
+  }
+
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .toolbar-actions :deep(.el-button) {
+    flex: 1;
+  }
+
+  .admin-card {
+    min-height: 300px;
+  }
+
+  .admin-action-btn {
+    min-height: 40px;
+  }
+}
+</style>
