@@ -1,5 +1,6 @@
 package org.zhan.recipe_backend.service.impl;
 
+import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.json.JsonData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,10 +96,16 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         // 3. Range queries -> Filter context
         if (cardParam.getMinTime() != null) {
-            filterBool.filter(f -> f.range(r -> r.field("cookingTimeMin").gte(co.elastic.clients.json.JsonData.of(cardParam.getMinTime()))));
+            filterBool.filter(f -> f.range(r -> r.number(n -> n
+                    .field("cookingTimeMin")
+                    .gte(cardParam.getMinTime().doubleValue())
+            )));
         }
         if (cardParam.getMaxTime() != null) {
-            filterBool.filter(f -> f.range(r -> r.field("cookingTimeMin").lte(co.elastic.clients.json.JsonData.of(cardParam.getMaxTime()))));
+            filterBool.filter(f -> f.range(r -> r.number(n -> n
+                    .field("cookingTimeMin")
+                    .lte(cardParam.getMaxTime().doubleValue())
+            )));
         }
 
         // 4. Ingredients -> Must be Match query because it's a Text field, NOT Keyword!
@@ -225,15 +232,15 @@ public class RecipeCardServiceImpl implements RecipeCardService {
         ));
 
         scoreFunctions.add(FunctionScore.of(fs -> fs
-                .gauss(g -> g
+                .gauss(g -> g.date(d -> d
                         .field("createdAt")
                         .placement(p -> p
-                                .origin(JsonData.of("now"))
-                                .scale(JsonData.of("30d"))
-                                .offset(JsonData.of("7d"))
+                                .origin("now")
+                                .scale(Time.of(t -> t.time("30d")))
+                                .offset(Time.of(t -> t.time("7d")))
                                 .decay(0.5)
                         )
-                )
+                ))
         ));
 
         scoreFunctions.add(FunctionScore.of(fs -> fs
@@ -405,7 +412,10 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         if (prefs.getTimeAvailability() != null && !prefs.getTimeAvailability().equals("") && !prefs.getTimeAvailability().equals("999")) {
             int maxTime = Integer.parseInt(prefs.getTimeAvailability());
-            boolBuilder.filter(f -> f.range(r -> r.field("cookingTimeMin").lte(JsonData.of(maxTime))));
+            boolBuilder.filter(f -> f.range(r -> r.number(n -> n
+                    .field("cookingTimeMin")
+                    .lte((double) maxTime)
+            )));
         }
     }
 
@@ -437,15 +447,15 @@ public class RecipeCardServiceImpl implements RecipeCardService {
 
         // 新鲜度加成（越新分越高）
         functions.add(FunctionScore.of(fs -> fs
-                .gauss(g -> g
+                .gauss(g -> g.date(d -> d
                         .field("createdAt")
                         .placement(p -> p
-                                .origin(JsonData.of("now"))
-                                .scale(JsonData.of("30d"))
-                                .offset(JsonData.of("3d"))
+                                .origin("now")
+                                .scale(Time.of(t -> t.time("30d")))
+                                .offset(Time.of(t -> t.time("3d")))
                                 .decay(0.5)
                         )
-                )
+                ))
         ));
 
         Query finalQuery = Query.of(q -> q.functionScore(fsq -> fsq
