@@ -34,9 +34,10 @@ jobs:
       - name: Check Elasticsearch
         run: curl -fsS http://localhost:9200
 
-      - name: Show logs on failure
+      - name: Show diagnostics on failure
         if: failure()
-        run: docker compose ps -a
+        run: |
+          docker compose ps -a
           docker inspect recipe_backend --format='{{json .State.Health}}' || true
           docker compose logs backend
           docker compose logs elasticsearch
