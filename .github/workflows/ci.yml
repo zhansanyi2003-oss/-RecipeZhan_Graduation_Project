@@ -3,12 +3,13 @@ name: Docker CI
 on:
   push:
     branches: [master, main]
-     paths-ignore:
+    paths-ignore:
       - "README.md"
       - "docs/**"
       - "*.md"
+
   pull_request:
-   paths-ignore:
+    paths-ignore:
       - "README.md"
       - "docs/**"
       - "*.md"
