@@ -15,42 +15,12 @@ A full-stack recipe platform for creating, discovering, saving, rating, and reco
 
 ## Tech Stack
 
-### Backend
-
-- Java 21
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- Spring Data Redis
-- Spring Data Elasticsearch
-- PostgreSQL
-- MapStruct
-- Maven Wrapper
-
-### Frontend
-
-- Vue 3
-- Vue Router
-- Pinia
-- Element Plus
-- Axios
-- Vite
-- Nginx for containerized frontend serving and API proxying
-
-### Infrastructure
-
-- Docker
-- Docker Compose
-- PostgreSQL
-- Redis
-- Elasticsearch
-- Kibana
-
-### Delivery
-
-- GitHub Actions CI and CD workflows
-- Docker Hub images for backend and frontend
-- Azure Virtual Machine deployment over SSH
+| Layer | Technologies |
+| --- | --- |
+| Frontend | Vue 3, Vite, Vue Router, Pinia, Element Plus, Axios, Nginx |
+| Backend | Java 21, Spring Boot, Spring Security, Spring Data JPA, Spring Data Redis, Spring Data Elasticsearch, MapStruct |
+| Data and Search | PostgreSQL, Redis, Elasticsearch |
+| Platform and Delivery | Docker, Docker Compose, GitHub Actions, Docker Hub, Azure Virtual Machine |
 
 ## Architecture
 
@@ -149,9 +119,7 @@ Real `.env` files are intentionally ignored by Git. Use `.env.example` as a temp
 |-- Recipe_FrontEnd/         Vue frontend
 |-- docker-compose.yml       Local source-built stack
 |-- docker-compose.prod.yml  Published-image deployment stack
-|-- .github/workflows/       CI and CD workflows
-|-- docs/                    Project notes and design context
-`-- uploads/                 Local file upload directory
+`-- .github/workflows/       CI and CD workflows
 ```
 
 ## Current Scope
@@ -159,4 +127,3 @@ Real `.env` files are intentionally ignored by Git. Use `.env.example` as a temp
 - The deployed environment currently runs application and data services on a single Azure VM through Docker Compose.
 - New deployments use a new PostgreSQL volume unless data is imported or seeded.
 - Uploaded files are stored on the deployment host volume in the current implementation.
-
