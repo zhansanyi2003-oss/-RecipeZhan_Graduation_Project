@@ -1,0 +1,93 @@
+name: Docker CD
+
+on:
+  workflow_run:
+    workflows: [Docker CI]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  publish-images:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout verified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Recipe_BackEnd
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/recipe-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/recipe-backend:${{ github.event.workflow_run.head_sha }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Recipe_FrontEnd
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/recipe-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/recipe-frontend:${{ github.event.workflow_run.head_sha }}
+
+  deploy-production:
+    if: github.event.workflow_run.conclusion == 'success'
+    needs: publish-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Checkout deployment files
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure SSH
+        env:
+          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          AZURE_VM_SSH_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AZURE_VM_SSH_KEY" > ~/.ssh/azure_vm_key
+          chmod 600 ~/.ssh/azure_vm_key
+          ssh-keyscan -H "$AZURE_VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload production compose file
+        env:
+          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
+        run: |
+          ssh -i ~/.ssh/azure_vm_key "$AZURE_VM_USER@$AZURE_VM_HOST" "mkdir -p /opt/recipe-app"
+          scp -i ~/.ssh/azure_vm_key docker-compose.prod.yml "$AZURE_VM_USER@$AZURE_VM_HOST:/opt/recipe-app/docker-compose.prod.yml"
+
+      - name: Deploy production stack
+        env:
+          AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
+        run: |
+          ssh -i ~/.ssh/azure_vm_key "$AZURE_VM_USER@$AZURE_VM_HOST" << 'EOF'
+            set -e
+            cd /opt/recipe-app
+            test -f .env
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml ps
+            curl -fsS http://localhost:8080/actuator/health
+            curl -fsS http://localhost
+          EOF
