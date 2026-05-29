@@ -43,10 +43,18 @@ spring:
           max-wait: 2s
 
 recipe:
+  storage:
+    type: ${RECIPE_STORAGE_TYPE:local}
   file:
     upload-dir: ${user.dir}/uploads/
     upload-url: /images/
     max-size-bytes: 5242880
+  azure:
+    storage:
+      account-name: ${AZURE_STORAGE_ACCOUNT_NAME:}
+      container-name: ${AZURE_STORAGE_CONTAINER_NAME:}
+      blob-prefix: ${AZURE_STORAGE_BLOB_PREFIX:images/}
+      avatar-blob-prefix: ${AZURE_STORAGE_AVATAR_BLOB_PREFIX:avatars/}
   search-sync:
     fixed-delay-ms: ${RECIPE_SEARCH_SYNC_FIXED_DELAY_MS:30000}
 

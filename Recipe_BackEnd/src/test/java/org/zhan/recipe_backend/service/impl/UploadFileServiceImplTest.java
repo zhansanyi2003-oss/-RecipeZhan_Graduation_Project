@@ -20,7 +20,7 @@ class UploadFileServiceImplTest {
 
     @Test
     void saveFile_rejectsInvalidUploadsAndStoresValidImages() throws IOException {
-        UploadFileServiceImpl service = new UploadFileServiceImpl();
+        LocalUploadFileServiceImpl service = new LocalUploadFileServiceImpl();
         ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
         ReflectionTestUtils.setField(service, "urlPrefix", "/images/");
         ReflectionTestUtils.setField(service, "maxSizeBytes", 5L);

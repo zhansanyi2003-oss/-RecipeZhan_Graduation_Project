@@ -58,7 +58,7 @@ public class UserController {
     public Result updateAvatar(@RequestParam("file") @NotNull MultipartFile file) {
         try {
             // 1. 调用公共服务，把图片物理存盘，拿到 URL
-            String newAvatarUrl = uploadFileService.saveFile(file);
+            String newAvatarUrl = uploadFileService.saveAvatar(file);
             userService.updateAvatar( newAvatarUrl);
 
             // 3. 把全新的 URL 返回给前端展示

@@ -6,4 +6,6 @@ import java.io.IOException;
 
 public interface UploadFileService {
     String saveFile(MultipartFile file) throws IOException;
+
+    String saveAvatar(MultipartFile file) throws IOException;
 }
