@@ -1,0 +1,16 @@
+{
+  "role": {
+    "name": "recipe-backend"
+  },
+  "authentication": {
+    "enabled": true,
+    "type": "SAMI"
+  },
+  "sampling": {
+    "percentage": 100
+  },
+  "selfDiagnostics": {
+    "destination": "console",
+    "level": "INFO"
+  }
+}
