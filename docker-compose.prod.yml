@@ -9,12 +9,12 @@ services:
     networks:
       - recipe_network
     healthcheck:
-    test:
-      ["CMD-SHELL", "wget -qO- http://localhost/healthz >/dev/null || exit 1"]
-  interval: 5s
-  timeout: 3s
-  retries: 12
-  start_period: 5s
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
 
   backend:
     image: zhanpeihao/recipe-backend:latest
