@@ -86,7 +86,15 @@ jobs:
             cd /opt/recipe-app
             test -f .env
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            if ! docker compose -f docker-compose.prod.yml up \
+                -d \
+                --wait \
+                --wait-timeout 300; then
+              docker compose -f docker-compose.prod.yml ps -a
+              docker compose -f docker-compose.prod.yml logs --tail=200 backend
+              docker compose -f docker-compose.prod.yml logs --tail=100 frontend
+              exit 1
+            fi
             docker compose -f docker-compose.prod.yml ps
             curl -fsS http://localhost:8080/actuator/health
             curl -fsS http://localhost
